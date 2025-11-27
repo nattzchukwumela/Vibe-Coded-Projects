@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Projects Showcase</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f4f8;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: linear-gradient(90deg, #4682b4 0%, #5a9fd4 100%);
+            padding: 20px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 15px rgba(70, 130, 180, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: white;
+            font-size: 1.5em;
+            font-weight: 700;
+        }
+
+        .logo-icon {
+            width: 45px;
+            height: 45px;
+            background: white;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 30px;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            opacity: 0.9;
+            transition: opacity 0.3s;
+        }
+
+        .nav-links a:hover {
+            opacity: 1;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 60px 20px;
+            background: white;
+            border-radius: 20px;
+            margin-bottom: 50px;
+            box-shadow: 0 5px 20px rgba(70, 130, 180, 0.1);
+            border-left: 5px solid #4682b4;
+        }
+
+        .hero h1 {
+            font-size: 2.8em;
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+
+        .hero h1 span {
+            color: #4682b4;
+        }
+
+        .hero p {
+            font-size: 1.2em;
+            color: #5a6c7d;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e1e8ed;
+        }
+
+        .section-title h2 {
+            font-size: 1.8em;
+            color: #2c3e50;
+        }
+
+        .section-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #4682b4, #5a9fd4);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+        }
+
+        .projects-container {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+        }
+
+        .project-section {
+            background: white;
+            border-radius: 20px;
+            padding: 35px;
+            box-shadow: 0 5px 20px rgba(70, 130, 180, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .project-section:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(70, 130, 180, 0.2);
+        }
+
+        .project-description {
+            color: #5a6c7d;
+            margin-bottom: 25px;
+            font-size: 1.05em;
+            line-height: 1.6;
+        }
+
+        .ai-contributors {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .ai-button {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 24px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .ai-button .ai-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9em;
+        }
+
+        /* Claude styling */
+        .ai-claude {
+            background: linear-gradient(135deg, #d4a574, #c9956c);
+            color: white;
+        }
+
+        .ai-claude:hover {
+            background: linear-gradient(135deg, #c9956c, #b8845b);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(201, 149, 108, 0.4);
+        }
+
+        .ai-claude .ai-icon {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        /* Qwen styling */
+        .ai-qwen {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+        }
+
+        .ai-qwen:hover {
+            background: linear-gradient(135deg, #5558e3, #7c4de8);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(99, 102, 241, 0.4);
+        }
+
+        .ai-qwen .ai-icon {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        /* GPT styling */
+        .ai-gpt {
+            background: linear-gradient(135deg, #10a37f, #1a7f64);
+            color: white;
+        }
+
+        .ai-gpt:hover {
+            background: linear-gradient(135deg, #0d8c6d, #156b56);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(16, 163, 127, 0.4);
+        }
+
+        .ai-gpt .ai-icon {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        /* Gemini styling */
+        .ai-gemini {
+            background: linear-gradient(135deg, #4285f4, #ea4335);
+            color: white;
+        }
+
+        .ai-gemini:hover {
+            background: linear-gradient(135deg, #3574e3, #d93526);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(66, 133, 244, 0.4);
+        }
+
+        .ai-gemini .ai-icon {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        /* Grok styling */
+        .ai-grok {
+            background: linear-gradient(135deg, #1d9bf0, #0d8ddb);
+            color: white;
+        }
+
+        .ai-grok:hover {
+            background: linear-gradient(135deg, #1a8cd8, #0b7bc4);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(29, 155, 240, 0.4);
+        }
+
+        .ai-grok .ai-icon {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .footer-card {
+            background: linear-gradient(135deg, #4682b4 0%, #5a9fd4 100%);
+            border-radius: 20px;
+            padding: 50px 40px;
+            text-align: center;
+            margin-top: 50px;
+            color: white;
+        }
+
+        .footer-card h3 {
+            font-size: 1.8em;
+            margin-bottom: 20px;
+        }
+
+        .footer-card p {
+            font-size: 1.15em;
+            line-height: 1.8;
+            max-width: 800px;
+            margin: 0 auto;
+            opacity: 0.95;
+        }
+
+        .footer-card .highlight {
+            background: white;
+            color: #4682b4;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: 700;
+            display: inline-block;
+            margin: 0 5px;
+        }
+
+        .stats-bar {
+            display: flex;
+            justify-content: center;
+            gap: 60px;
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: 700;
+        }
+
+        .stat-label {
+            font-size: 0.95em;
+            opacity: 0.9;
+        }
+
+        @media (max-width: 768px) {
+            .navbar {
+                flex-direction: column;
+                gap: 15px;
+                padding: 15px 20px;
+            }
+
+            .nav-links {
+                gap: 15px;
+            }
+
+            .hero h1 {
+                font-size: 2em;
+            }
+
+            .project-section {
+                padding: 25px;
+            }
+
+            .ai-contributors {
+                flex-direction: column;
+            }
+
+            .ai-button {
+                justify-content: center;
+            }
+
+            .stats-bar {
+                flex-direction: column;
+                gap: 25px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="logo">
+            <div class="logo-icon">🤖</div>
+            <span>AI Showcase</span>
+        </div>
+        <div class="nav-links">
+            <a href="#projects">Projects</a>
+            <a href="#about">About</a>
+            <a href="#contact">Contact</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1>Welcome to <span>AI Projects</span> Showcase</h1>
+            <p>Discover interactive projects built with the world's most advanced AI models. Click on any AI to explore
+                their unique contribution.</p>
+        </div>
+
+        <div class="projects-container" id="projects">
+            <!-- Endless Runner Game -->
+            <div class="project-section">
+                <div class="section-title">
+                    <div class="section-icon">🏃</div>
+                    <h2>Endless Runner Game</h2>
+                </div>
+                <p class="project-description">
+                    An action-packed endless runner featuring dynamic obstacles, power-ups, and progressive difficulty.
+                    Each AI brought unique mechanics and visual styles to create an engaging gaming experience.
+                </p>
+                <div class="ai-contributors">
+                    <a href="endless-runner-claude.html" class="ai-button ai-claude">
+                        <span class="ai-icon">✨</span>
+                        Claude Opus 4.5 Version
+                    </a>
+                    <a href="endless-runner-qwen.html" class="ai-button ai-qwen">
+                        <span class="ai-icon">🔮</span>
+                        Qwen AI Version
+                    </a>
+                </div>
+            </div>
+
+            <!-- Racing Game -->
+            <div class="project-section">
+                <div class="section-title">
+                    <div class="section-icon">🏎️</div>
+                    <h2>Racing Game</h2>
+                </div>
+                <p class="project-description">
+                    High-speed racing with realistic physics, multiple tracks, and competitive AI opponents.
+                    Compare how different AI models approached vehicle handling and track design.
+                </p>
+                <div class="ai-contributors">
+                    <a href="racing-claude.html" class="ai-button ai-claude">
+                        <span class="ai-icon">✨</span>
+                        Claude Opus 4.5 Version
+                    </a>
+                    <a href="racing-gpt.html" class="ai-button ai-gpt">
+                        <span class="ai-icon">⚡</span>
+                        GPT-5-High Version
+                    </a>
+                    <a href="racing-gemini.html" class="ai-button ai-gemini">
+                        <span class="ai-icon">💎</span>
+                        Gemini-3-Pro Version
+                    </a>
+                </div>
+            </div>
+
+            <!-- Todo App -->
+            <div class="project-section">
+                <div class="section-title">
+                    <div class="section-icon">✅</div>
+                    <h2>Todo Application</h2>
+                </div>
+                <p class="project-description">
+                    A productivity-focused task management app with categories, priorities, and progress tracking.
+                    See how each AI approached user experience and feature implementation differently.
+                </p>
+                <div class="ai-contributors">
+                    <a href="todo-claude.html" class="ai-button ai-claude">
+                        <span class="ai-icon">✨</span>
+                        Claude Version
+                    </a>
+                    <a href="todo-grok.html" class="ai-button ai-grok">
+                        <span class="ai-icon">🚀</span>
+                        Grok 4.1 Version
+                    </a>
+                </div>
+            </div>
+
+            <!-- Zombie Game -->
+            <div class="project-section">
+                <div class="section-title">
+                    <div class="section-icon">🧟</div>
+                    <h2>Zombie Survival Game</h2>
+                </div>
+                <p class="project-description">
+                    Survive waves of zombies with strategic weapon choices, upgrades, and base defense mechanics.
+                    Each AI version offers unique gameplay strategies and visual horror aesthetics.
+                </p>
+                <div class="ai-contributors">
+                    <a href="zombie-claude.html" class="ai-button ai-claude">
+                        <span class="ai-icon">✨</span>
+                        Claude Opus 4.5 Version
+                    </a>
+                    <a href="zombie-gemini.html" class="ai-button ai-gemini">
+                        <span class="ai-icon">💎</span>
+                        Gemini-3-Pro Version
+                    </a>
+                    <a href="zombie-gpt.html" class="ai-button ai-gpt">
+                        <span class="ai-icon">⚡</span>
+                        GPT-5-High Version
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-card" id="about">
+            <h3>🏆 My Coding Partner of Choice</h3>
+            <p>
+                After extensive testing and development across multiple AI platforms,
+                my personal best for coding from all the AI models is
+                <span class="highlight">Claude</span> as the unbeatable AI coding partner.
+                Its understanding, code quality, and problem-solving capabilities consistently
+                exceed expectations.
+            </p>
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <div class="stat-number">4</div>
+                    <div class="stat-label">Projects Built</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">5</div>
+                    <div class="stat-label">AI Models Tested</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">12</div>
+                    <div class="stat-label">Unique Versions</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
