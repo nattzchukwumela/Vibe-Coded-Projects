@@ -105,7 +105,7 @@
 
     <div class="instructions">
         <div>SPACE/UP - Jump</div>
-        <div>SPACE (in air near wall) - Stick to Wall</div>
+        <div>Hold SPACE near wall - Stick to Wall</div>
         <div>X - Shoot Laser</div>
     </div>
 
@@ -129,11 +129,17 @@
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
 
+        // Game constants
+        const GROUND_HEIGHT = 100;
+        const GROUND_Y = () => canvas.height - GROUND_HEIGHT;
+
         // Game variables
         let gameRunning = true;
         let score = 0;
         let gameSpeed = 5;
         let frameCount = 0;
+        let lastPlatformX = 0;
+        let lastWallX = 0;
 
         // Player object
         const player = {
@@ -166,7 +172,6 @@
                 this.color = '#00ffff';
                 this.particles = [];
 
-                // Create particles for effect
                 for (let i = 0; i < 3; i++) {
                     this.particles.push({
                         x: x,
@@ -181,7 +186,6 @@
             update() {
                 this.x += this.speed;
 
-                // Update particles
                 this.particles.forEach(p => {
                     p.x += p.vx;
                     p.y += p.vy;
@@ -192,7 +196,6 @@
             }
 
             draw() {
-                // Draw laser beam
                 ctx.save();
                 ctx.shadowBlur = 20;
                 ctx.shadowColor = this.color;
@@ -205,7 +208,6 @@
                 ctx.fillStyle = gradient;
                 ctx.fillRect(this.x, this.y - this.height / 2, this.width, this.height);
 
-                // Draw particles
                 this.particles.forEach(p => {
                     ctx.globalAlpha = p.life;
                     ctx.fillStyle = '#00ffff';
@@ -216,18 +218,20 @@
             }
         }
 
-        // Platform array
-        const platforms = [];
+        // Platform arrays - separate ground from floating platforms
+        const groundSegments = [];
+        const floatingPlatforms = [];
+        const walls = [];
 
         // Platform class
         class Platform {
-            constructor(x, y, width, height, isWall = false) {
+            constructor(x, y, width, height, type = 'ground') {
                 this.x = x;
                 this.y = y;
                 this.width = width;
                 this.height = height;
-                this.isWall = isWall;
-                this.color = isWall ? '#444466' : '#666688';
+                this.type = type; // 'ground', 'floating', 'wall'
+                this.color = type === 'wall' ? '#444466' : (type === 'floating' ? '#557799' : '#666688');
             }
 
             update() {
@@ -235,7 +239,6 @@
             }
 
             draw() {
-                // Draw with 2.5D effect
                 ctx.fillStyle = this.color;
                 ctx.fillRect(this.x, this.y, this.width, this.height);
 
@@ -243,16 +246,21 @@
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
                 ctx.fillRect(this.x, this.y + this.height - 5, this.width, 5);
 
-                if (this.isWall) {
-                    // Add wall texture
+                if (this.type === 'wall') {
                     ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
                     ctx.lineWidth = 1;
-                    for (let i = 0; i < this.width; i += 20) {
+                    for (let i = 0; i < this.height; i += 20) {
                         ctx.beginPath();
-                        ctx.moveTo(this.x + i, this.y);
-                        ctx.lineTo(this.x + i, this.y + this.height);
+                        ctx.moveTo(this.x, this.y + i);
+                        ctx.lineTo(this.x + this.width, this.y + i);
                         ctx.stroke();
                     }
+                }
+
+                if (this.type === 'floating') {
+                    // Add highlight to floating platforms
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                    ctx.fillRect(this.x, this.y, this.width, 3);
                 }
             }
         }
@@ -269,7 +277,7 @@
                 this.height = 40;
                 this.type = type;
                 this.health = type === 'flying' ? 1 : 2;
-                this.velocityY = type === 'flying' ? Math.sin(Date.now() * 0.001) * 2 : 0;
+                this.baseY = y;
                 this.color = type === 'flying' ? '#ff8800' : '#8800ff';
                 this.hitFlash = 0;
             }
@@ -278,7 +286,7 @@
                 this.x -= gameSpeed;
 
                 if (this.type === 'flying') {
-                    this.y += Math.sin(Date.now() * 0.003) * 2;
+                    this.y = this.baseY + Math.sin(Date.now() * 0.003) * 30;
                 }
 
                 if (this.hitFlash > 0) {
@@ -290,7 +298,7 @@
                 this.health--;
                 this.hitFlash = 10;
                 if (this.health <= 0) {
-                    score += this.type === 'flying' ? 20 : 10;
+                    score += this.type === 'flying' ? 200 : 100;
                     return true;
                 }
                 return false;
@@ -305,9 +313,7 @@
                     ctx.fillStyle = this.color;
                 }
 
-                // Draw enemy with simple shape
                 if (this.type === 'flying') {
-                    // Flying enemy - diamond shape
                     ctx.beginPath();
                     ctx.moveTo(this.x + this.width / 2, this.y);
                     ctx.lineTo(this.x + this.width, this.y + this.height / 2);
@@ -315,11 +321,13 @@
                     ctx.lineTo(this.x, this.y + this.height / 2);
                     ctx.closePath();
                     ctx.fill();
+
+                    // Add glow effect
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = this.color;
                 } else {
-                    // Ground enemy - rectangle with spikes
                     ctx.fillRect(this.x, this.y, this.width, this.height);
 
-                    // Draw spikes
                     ctx.fillStyle = '#ff0000';
                     for (let i = 0; i < 3; i++) {
                         ctx.beginPath();
@@ -334,52 +342,67 @@
             }
         }
 
-        // Initialize platforms
-        function initializePlatforms() {
-            // Ground platform
-            platforms.push(new Platform(0, canvas.height - 100, canvas.width + 200, 100));
-
-            // Add some starting platforms
-            platforms.push(new Platform(400, canvas.height - 200, 150, 20));
-            platforms.push(new Platform(700, canvas.height - 300, 150, 20));
-
-            // Add a wall
-            platforms.push(new Platform(900, canvas.height - 400, 30, 300, true));
+        // Initialize ground
+        function initializeGround() {
+            // Create continuous ground
+            for (let x = 0; x < canvas.width + 500; x += 300) {
+                groundSegments.push(new Platform(x, GROUND_Y(), 300, GROUND_HEIGHT, 'ground'));
+            }
+            lastPlatformX = canvas.width;
         }
 
-        // Generate new platforms
-        function generatePlatform() {
-            const lastPlatform = platforms[platforms.length - 1];
+        // Generate ground segments
+        function generateGround() {
+            const lastGround = groundSegments[groundSegments.length - 1];
+            if (lastGround && lastGround.x + lastGround.width < canvas.width + 300) {
+                const newX = lastGround.x + lastGround.width;
+                groundSegments.push(new Platform(newX, GROUND_Y(), 300, GROUND_HEIGHT, 'ground'));
+            }
+        }
 
-            if (lastPlatform.x < canvas.width) {
-                const random = Math.random();
+        // Generate floating platforms
+        function generateFloatingPlatform() {
+            // Only generate if there's enough space since last platform
+            if (lastPlatformX < canvas.width - 200) {
+                if (Math.random() < 0.02) { // 2% chance per frame
+                    const minY = GROUND_Y() - 350;
+                    const maxY = GROUND_Y() - 150;
+                    const y = minY + Math.random() * (maxY - minY);
+                    const width = 100 + Math.random() * 100;
 
-                if (random < 0.3) {
-                    // Regular platform
-                    const y = canvas.height - 100 - Math.random() * 400;
-                    const width = 100 + Math.random() * 150;
-                    platforms.push(new Platform(canvas.width, y, width, 20));
-                } else if (random < 0.5) {
-                    // Wall
-                    const height = 200 + Math.random() * 200;
-                    const y = canvas.height - 100 - height;
-                    platforms.push(new Platform(canvas.width, y, 30, height, true));
-                } else {
-                    // Ground continuation
-                    platforms.push(new Platform(canvas.width, canvas.height - 100, 300, 100));
+                    floatingPlatforms.push(new Platform(canvas.width + 50, y, width, 20, 'floating'));
+                    lastPlatformX = canvas.width + 50;
+                }
+            }
+        }
+
+        // Generate walls
+        function generateWall() {
+            // Only generate if there's enough space since last wall
+            if (lastWallX < canvas.width - 400) {
+                if (Math.random() < 0.008) { // 0.8% chance per frame
+                    const height = 150 + Math.random() * 150;
+                    const y = GROUND_Y() - height;
+
+                    walls.push(new Platform(canvas.width + 50, y, 30, height, 'wall'));
+                    lastWallX = canvas.width + 50;
                 }
             }
         }
 
         // Generate enemies
         function generateEnemy() {
-            if (Math.random() < 0.02 && enemies.length < 5) {
-                const type = Math.random() < 0.5 ? 'ground' : 'flying';
-                const y = type === 'flying' ?
-                    canvas.height - 300 - Math.random() * 200 :
-                    canvas.height - 140;
+            if (Math.random() < 0.01 && enemies.length < 4) {
+                const type = Math.random() < 0.4 ? 'flying' : 'ground';
+                let y;
 
-                enemies.push(new Enemy(canvas.width, y, type));
+                if (type === 'flying') {
+                    y = GROUND_Y() - 200 - Math.random() * 150;
+                } else {
+                    y = GROUND_Y() - 40; // Place on ground
+                }
+
+                enemies.push(new Enemy(canvas.width + 50, y, type));
             }
         }
 
@@ -388,17 +411,19 @@
 
         window.addEventListener('keydown', (e) => {
             keys[e.key] = true;
+            keys[e.code] = true;
 
-            if (e.key === ' ' || e.key === 'ArrowUp') {
+            if (e.key === ' ' || e.key === 'ArrowUp' || e.code === 'Space') {
                 e.preventDefault();
                 if (player.onGround) {
-                    player.velocityY = -20;
+                    player.velocityY = -18;
                     player.jumping = true;
                     player.onGround = false;
                 } else if (player.stickingToWall) {
-                    player.velocityY = -18;
-                    player.velocityX = -5;
+                    player.velocityY = -16;
+                    player.velocityX = -8;
                     player.stickingToWall = false;
+                    player.jumping = true;
                 }
             }
 
@@ -409,6 +434,7 @@
 
         window.addEventListener('keyup', (e) => {
             keys[e.key] = false;
+            keys[e.code] = false;
         });
 
         // Shoot laser
@@ -426,39 +452,47 @@
                 rect1.y + rect1.height > rect2.y;
         }
 
+        // Get all platforms
+        function getAllPlatforms() {
+            return [...groundSegments, ...floatingPlatforms, ...walls];
+        }
+
         // Update player
         function updatePlayer() {
+            // Apply gravity if not sticking to wall
             if (!player.stickingToWall) {
-                // Apply gravity
                 player.velocityY += 0.8;
-
-                // Apply horizontal velocity
                 player.x += player.velocityX;
-                player.velocityX *= 0.9; // Friction
+                player.velocityX *= 0.9;
             } else {
                 // Slowly slide down wall
-                player.velocityY = 2;
+                player.velocityY = 1.5;
             }
 
             // Update position
             player.y += player.velocityY;
 
-            // Reset ground flag
+            // Reset flags
             player.onGround = false;
+            let wasSticking = player.stickingToWall;
             player.stickingToWall = false;
 
-            // Check platform collisions
-            for (let platform of platforms) {
-                if (checkCollision(player, platform)) {
-                    // Check if it's a wall and player is in the air
-                    if (platform.isWall && !player.onGround && keys[' ']) {
-                        // Stick to wall
-                        player.stickingToWall = true;
-                        player.x = platform.x - player.width;
+            // Check ground collisions
+            for (let ground of groundSegments) {
+                if (checkCollision(player, ground)) {
+                    if (player.velocityY > 0 && player.y + player.height - player.velocityY <= ground.y + 10) {
+                        player.y = ground.y - player.height;
                         player.velocityY = 0;
-                        player.velocityX = 0;
-                    } else if (player.velocityY > 0 && player.y < platform.y) {
-                        // Landing on top of platform
+                        player.onGround = true;
+                        player.jumping = false;
+                    }
+                }
+            }
+
+            // Check floating platform collisions
+            for (let platform of floatingPlatforms) {
+                if (checkCollision(player, platform)) {
+                    if (player.velocityY > 0 && player.y + player.height - player.velocityY <= platform.y + 10) {
                         player.y = platform.y - player.height;
                         player.velocityY = 0;
                         player.onGround = true;
@@ -467,7 +501,34 @@
                 }
             }
 
-            // Keep player in bounds
+            // Check wall collisions
+            for (let wall of walls) {
+                if (checkCollision(player, wall)) {
+                    // Check if player is in the air and holding space near wall
+                    if (!player.onGround && (keys[' '] || keys['Space'])) {
+                        player.stickingToWall = true;
+                        player.x = wall.x - player.width;
+                        player.velocityY = 0;
+                        player.velocityX = 0;
+                    } else if (player.velocityY > 0 && player.y + player.height - player.velocityY <= wall.y + 10) {
+                        // Landing on top of wall
+                        player.y = wall.y - player.height;
+                        player.velocityY = 0;
+                        player.onGround = true;
+                        player.jumping = false;
+                    } else if (!player.stickingToWall) {
+                        // Push player back from wall
+                        player.x = wall.x - player.width;
+                    }
+                }
+            }
+
+            // Release from wall if space is released
+            if (wasSticking && !(keys[' '] || keys['Space'])) {
+                player.stickingToWall = false;
+            }
+
+            // Keep player in bounds horizontally
             if (player.x < 50) {
                 player.x = 50;
                 player.velocityX = 0;
@@ -478,7 +539,7 @@
             }
 
             // Check if player fell off screen
-            if (player.y > canvas.height) {
+            if (player.y > canvas.height + 100) {
                 gameOver();
             }
         }
@@ -491,10 +552,18 @@
             ctx.fillStyle = player.color;
             ctx.fillRect(player.x, player.y, player.width, player.height);
 
+            // Draw mask pattern
+            ctx.fillStyle = '#cc0000';
+            ctx.fillRect(player.x + 5, player.y + 5, player.width - 10, 25);
+
             // Draw eyes
             ctx.fillStyle = 'white';
-            ctx.fillRect(player.x + 8, player.y + 10, 8, 8);
-            ctx.fillRect(player.x + 24, player.y + 10, 8, 8);
+            ctx.beginPath();
+            ctx.ellipse(player.x + 12, player.y + 15, 6, 8, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(player.x + 28, player.y + 15, 6, 8, 0.3, 0, Math.PI * 2);
+            ctx.fill();
 
             // Draw web effect when sticking to wall
             if (player.stickingToWall) {
@@ -502,23 +571,73 @@
                 ctx.lineWidth = 2;
                 ctx.globalAlpha = 0.8;
 
-                // Draw web lines
-                for (let i = 0; i < 3; i++) {
+                for (let i = 0; i < 5; i++) {
                     ctx.beginPath();
-                    ctx.moveTo(player.x + player.width, player.y + 10 + i * 15);
-                    ctx.lineTo(player.x + player.width + 30, player.y + 10 + i * 15 + Math.sin(Date.now() * 0.01) * 5);
+                    ctx.moveTo(player.x + player.width, player.y + 5 + i * 12);
+                    ctx.quadraticCurveTo(
+                        player.x + player.width + 20,
+                        player.y + 5 + i * 12 + Math.sin(Date.now() * 0.01 + i) * 3,
+                        player.x + player.width + 35,
+                        player.y + 5 + i * 12
+                    );
                     ctx.stroke();
                 }
             }
 
-            // Draw jumping effect
-            if (player.jumping && !player.onGround) {
-                ctx.globalAlpha = 0.5;
-                ctx.fillStyle = '#ffaaaa';
-                ctx.fillRect(player.x - 5, player.y + player.height, player.width + 10, 5);
+            // Draw jump trail
+            if (player.jumping && !player.onGround && !player.stickingToWall) {
+                ctx.globalAlpha = 0.3;
+                ctx.fillStyle = '#ff6666';
+                for (let i = 1; i <= 3; i++) {
+                    ctx.globalAlpha = 0.3 - i * 0.08;
+                    ctx.fillRect(
+                        player.x - i * 5,
+                        player.y + player.height - 10 + i * 10,
+                        player.width,
+                        player.height * 0.5
+                    );
+                }
             }
 
             ctx.restore();
+        }
+
+        // Clean up off-screen objects
+        function cleanupObjects() {
+            // Remove off-screen ground segments
+            for (let i = groundSegments.length - 1; i >= 0; i--) {
+                if (groundSegments[i].x + groundSegments[i].width < -100) {
+                    groundSegments.splice(i, 1);
+                }
+            }
+
+            // Remove off-screen floating platforms
+            for (let i = floatingPlatforms.length - 1; i >= 0; i--) {
+                if (floatingPlatforms[i].x + floatingPlatforms[i].width < -100) {
+                    floatingPlatforms.splice(i, 1);
+                }
+            }
+
+            // Remove off-screen walls
+            for (let i = walls.length - 1; i >= 0; i--) {
+                if (walls[i].x + walls[i].width < -100) {
+                    walls.splice(i, 1);
+                }
+            }
+
+            // Remove off-screen enemies
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                if (enemies[i].x + enemies[i].width < -100) {
+                    enemies.splice(i, 1);
+                }
+            }
+
+            // Remove off-screen lasers
+            for (let i = lasers.length - 1; i >= 0; i--) {
+                if (lasers[i].x > canvas.width + 50) {
+                    lasers.splice(i, 1);
+                }
+            }
         }
 
         // Update game
@@ -528,8 +647,8 @@
             frameCount++;
 
             // Increase difficulty over time
-            if (frameCount % 600 === 0) {
-                gameSpeed += 0.5;
+            if (frameCount % 1000 === 0) {
+                gameSpeed = Math.min(gameSpeed + 0.3, 12);
             }
 
             // Update score
@@ -539,13 +658,20 @@
             // Update player
             updatePlayer();
 
-            // Generate platforms and enemies
-            generatePlatform();
+            // Generate platforms
+            generateGround();
+            generateFloatingPlatform();
+            generateWall();
             generateEnemy();
 
-            // Update platforms
-            platforms.forEach(platform => platform.update());
-            platforms.splice(0, platforms.filter(p => p.x + p.width < -100).length);
+            // Update all platforms
+            groundSegments.forEach(g => g.update());
+            floatingPlatforms.forEach(p => p.update());
+            walls.forEach(w => w.update());
+
+            // Update tracking variables
+            lastPlatformX -= gameSpeed;
+            lastWallX -= gameSpeed;
 
             // Update enemies
             enemies.forEach(enemy => enemy.update());
@@ -553,9 +679,12 @@
             // Check enemy collisions with player
             for (let i = enemies.length - 1; i >= 0; i--) {
                 if (checkCollision(player, enemies[i])) {
-                    player.health -= 10;
+                    player.health -= 20;
                     enemies.splice(i, 1);
                     updateHealthBar();
+
+                    // Visual feedback
+                    player.velocityX = -5;
 
                     if (player.health <= 0) {
                         gameOver();
@@ -568,25 +697,27 @@
 
             // Check laser collisions with enemies
             for (let i = lasers.length - 1; i >= 0; i--) {
+                let laserHit = false;
                 for (let j = enemies.length - 1; j >= 0; j--) {
                     if (checkCollision(lasers[i], enemies[j])) {
                         if (enemies[j].takeDamage()) {
                             enemies.splice(j, 1);
                         }
-                        lasers.splice(i, 1);
+                        laserHit = true;
                         break;
                     }
                 }
+                if (laserHit) {
+                    lasers.splice(i, 1);
+                }
             }
 
-            // Remove off-screen lasers and enemies
-            lasers.splice(0, lasers.filter(l => l.x > canvas.width).length);
-            enemies.splice(0, enemies.filter(e => e.x + e.width < -100).length);
+            // Cleanup off-screen objects
+            cleanupObjects();
         }
 
         // Draw background
         function drawBackground() {
-            // Create parallax city background
             ctx.fillStyle = '#0a0a1a';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -601,12 +732,20 @@
 
             ctx.globalAlpha = 1;
 
-            // Draw city silhouette
+            // Draw distant city silhouette (parallax layer 1 - slow)
+            ctx.fillStyle = '#0f0f2a';
+            for (let i = 0; i < 15; i++) {
+                const x = (i * 200 - frameCount * 0.2) % (canvas.width + 200) - 200;
+                const height = 150 + (i * 67) % 250;
+                ctx.fillRect(x, canvas.height - GROUND_HEIGHT - height, 180, height);
+            }
+
+            // Draw closer city silhouette (parallax layer 2 - medium)
             ctx.fillStyle = '#1a1a3a';
-            for (let i = 0; i < 20; i++) {
-                const x = (i * 150 - frameCount * 0.5) % (canvas.width + 150) - 150;
+            for (let i = 0; i < 12; i++) {
+                const x = (i * 180 - frameCount * 0.5) % (canvas.width + 180) - 180;
                 const height = 100 + (i * 47) % 200;
-                ctx.fillRect(x, canvas.height - 100 - height, 120, height);
+                ctx.fillRect(x, canvas.height - GROUND_HEIGHT - height, 150, height);
             }
         }
 
@@ -629,20 +768,25 @@
             score = 0;
             gameSpeed = 5;
             frameCount = 0;
+            lastPlatformX = 0;
+            lastWallX = 0;
 
             player.x = 100;
-            player.y = canvas.height - 200;
+            player.y = GROUND_Y() - 100;
             player.velocityY = 0;
             player.velocityX = 0;
             player.health = player.maxHealth;
             player.onGround = false;
             player.stickingToWall = false;
+            player.jumping = false;
 
-            platforms.length = 0;
+            groundSegments.length = 0;
+            floatingPlatforms.length = 0;
+            walls.length = 0;
             enemies.length = 0;
             lasers.length = 0;
 
-            initializePlatforms();
+            initializeGround();
             updateHealthBar();
 
             document.getElementById('gameOver').style.display = 'none';
@@ -650,14 +794,14 @@
 
         // Game loop
         function gameLoop() {
-            // Clear canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Draw everything
             drawBackground();
 
-            // Draw platforms
-            platforms.forEach(platform => platform.draw());
+            // Draw all platforms
+            groundSegments.forEach(g => g.draw());
+            floatingPlatforms.forEach(p => p.draw());
+            walls.forEach(w => w.draw());
 
             // Draw enemies
             enemies.forEach(enemy => enemy.draw());
@@ -675,7 +819,7 @@
         }
 
         // Initialize game
-        initializePlatforms();
+        initializeGround();
         gameLoop();
 
         // Make restart function global
