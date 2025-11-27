@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>3D Racer — Three.js</title>
+    <style>
+        :root {
+            --bg: #0b0e12;
+            --panel: #12161d;
+            --accent: #37d084;
+            --accent2: #ffd658;
+            --text: #e9eef5;
+            --muted: #9aa7b2;
+            --danger: #ff6b6b;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            height: 100%;
+            overflow: hidden;
+            background: radial-gradient(1200px 800px at 50% 30%, #111722, var(--bg));
+            color: var(--text);
+            font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, "Helvetica Neue", Arial;
+        }
+
+        #ui {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        #hud {
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            background: rgba(18, 22, 29, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(6px);
+            border-radius: 12px;
+            padding: 10px 12px;
+        }
+
+        .pill {
+            display: inline-flex;
+            gap: 8px;
+            align-items: center;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 12px var(--accent);
+        }
+
+        .dot.warn {
+            background: var(--danger);
+            box-shadow: 0 0 12px var(--danger);
+        }
+
+        .val {
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+
+        #centerMsg {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: rgba(18, 22, 29, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            pointer-events: none;
+            color: var(--muted);
+        }
+
+        .overlay {
+            position: fixed;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            background: radial-gradient(900px 700px at 50% 38%, rgba(18, 22, 29, 0.9), rgba(11, 14, 18, 0.95));
+            pointer-events: auto;
+        }
+
+        .panel {
+            width: min(760px, 92vw);
+            background: rgba(18, 22, 29, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 26px 22px;
+            border-radius: 16px;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+        }
+
+        .title {
+            margin: 0 0 8px;
+            font-size: 28px;
+            letter-spacing: 0.3px;
+        }
+
+        .subtitle {
+            margin: 0 0 14px;
+            color: var(--muted);
+        }
+
+        .k {
+            display: inline-block;
+            min-width: 26px;
+            padding: 2px 8px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 8px;
+            margin: 0 2px;
+            font-weight: 600;
+        }
+
+        .btnrow {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+
+        button {
+            appearance: none;
+            border: none;
+            cursor: pointer;
+            pointer-events: auto;
+            background: linear-gradient(180deg, #2a754e, #1e5a3e);
+            color: white;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            padding: 11px 16px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(53, 194, 126, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+        }
+
+        button.secondary {
+            background: linear-gradient(180deg, #3b4151, #2c313f);
+        }
+
+        .center {
+            text-align: center;
+        }
+
+        .small {
+            color: var(--muted);
+            font-size: 13px;
+            margin-top: 8px;
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="ui">
+        <div id="hud">
+            <span class="pill"><span class="dot"></span> Speed: <span id="speed" class="val">0</span> km/h</span>
+            <span class="pill"><span class="dot"></span> Lap: <span id="lap" class="val">1</span></span>
+            <span class="pill"><span class="dot"></span> Lap Time: <span id="lapTime" class="val">0.00</span>s</span>
+            <span class="pill"><span class="dot"></span> Best: <span id="best" class="val">—</span></span>
+        </div>
+        <div id="centerMsg">W/S to accelerate, A/D to steer, Space to handbrake</div>
+    </div>
+
+    <div id="start" class="overlay">
+        <div class="panel">
+            <h1 class="title">🏁 3D Racer</h1>
+            <p class="subtitle">Arcade handling, smooth oval track, chase camera. Beat your best lap!</p>
+            <ul style="margin:0 0 14px 18px;">
+                <li>Accelerate/Brake: <span class="k">W</span>/<span class="k">S</span> or <span
+                        class="k">↑</span>/<span class="k">↓</span></li>
+                <li>Steer: <span class="k">A</span>/<span class="k">D</span> or <span class="k">←</span>/<span
+                        class="k">→</span></li>
+                <li>Handbrake: <span class="k">Space</span> · Pause: <span class="k">P</span> · Restart: <span
+                        class="k">R</span> · Mute: <span class="k">M</span></li>
+            </ul>
+            <div class="btnrow">
+                <button id="startBtn">Start Race</button>
+                <button id="muteBtn" class="secondary">Mute SFX</button>
+            </div>
+            <div class="small">Tip: Keep near the center line for max grip.</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+
+        let W = innerWidth, H = innerHeight, DPR = Math.min(devicePixelRatio || 1, 2);
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0e1219);
+        scene.fog = new THREE.Fog(0x0e1219, 120, 600);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(DPR);
+        renderer.setSize(W, H);
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        document.body.appendChild(renderer.domElement);
+
+        const camera = new THREE.PerspectiveCamera(60, W / H, 0.1, 2000);
+
+        // Lights
+        const hemi = new THREE.HemisphereLight(0xe8f0ff, 0x1a1e26, 0.9);
+        scene.add(hemi);
+        const sun = new THREE.DirectionalLight(0xffffff, 0.9);
+        sun.position.set(200, 250, 100);
+        scene.add(sun);
+
+        // Ground
+        const groundMat = new THREE.MeshStandardMaterial({ color: 0x0d1117, roughness: 1.0, metalness: 0.0 });
+        const ground = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000), groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        scene.add(ground);
+
+        // Simple sky dome gradient
+        {
+            const skyGeo = new THREE.SphereGeometry(1200, 16, 8);
+            const skyMat = new THREE.MeshBasicMaterial({ side: THREE.BackSide, color: 0x101827 });
+            scene.add(new THREE.Mesh(skyGeo, skyMat));
+        }
+
+        // UI
+        const speedEl = document.getElementById('speed');
+        const lapEl = document.getElementById('lap');
+        const lapTimeEl = document.getElementById('lapTime');
+        const bestEl = document.getElementById('best');
+        const startOverlay = document.getElementById('start');
+        const startBtn = document.getElementById('startBtn');
+        const muteBtn = document.getElementById('muteBtn');
+
+        let muted = false;
+        muteBtn.addEventListener('click', () => {
+            muted = !muted;
+            muteBtn.textContent = muted ? 'Unmute SFX' : 'Mute SFX';
+        });
+
+        // WebAudio tiny SFX
+        const audioCtx = window.AudioContext ? new AudioContext() : null;
+        function beep(freq = 600, dur = 0.06, type = 'square', vol = 0.05) {
+            if (!audioCtx || muted) return;
+            const t0 = audioCtx.currentTime;
+            const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+            o.type = type; o.frequency.setValueAtTime(freq, t0);
+            g.gain.setValueAtTime(0, t0);
+            g.gain.linearRampToValueAtTime(vol, t0 + 0.005);
+            g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+            o.connect(g).connect(audioCtx.destination);
+            o.start(t0); o.stop(t0 + dur + 0.02);
+        }
+
+        // Track generation (oval via ellipse; ribbon mesh)
+        const Track = (() => {
+            // Params
+            const A = 140;      // semi-major axis (x)
+            const B = 100;      // semi-minor axis (z)
+            const ROAD_W = 16;  // road width
+            const N = 300;      // segments for geometry/projection
+
+            const center = [];
+            const segmentLength = new Float32Array(N);
+            const cumul = new Float32Array(N + 1);
+            const posAttr = new Float32Array(N * 2 * 3);
+            const idx = new (N * 6 > 65535 ? Uint32Array : Uint16Array)(N * 6);
+
+            const tmpV = new THREE.Vector3(), tmpT = new THREE.Vector3();
+
+            for (let i = 0; i < N; i++) {
+                const t = i / N * Math.PI * 2;
+                const x = Math.cos(t) * A;
+                const z = Math.sin(t) * B;
+                center.push(new THREE.Vector3(x, 0, z));
+            }
+            // lengths and normals
+            cumul[0] = 0;
+            for (let i = 0; i < N; i++) {
+                const a = center[i];
+                const b = center[(i + 1) % N];
+                segmentLength[i] = a.distanceTo(b);
+                cumul[i + 1] = cumul[i] + segmentLength[i];
+            }
+            const trackLen = cumul[N];
+
+            // Build ribbon geometry (left/right edges)
+            for (let i = 0; i < N; i++) {
+                const a = center[i];
+                const b = center[(i + 1) % N];
+                tmpT.copy(b).sub(a).normalize();
+                const n = new THREE.Vector3(-tmpT.z, 0, tmpT.x); // left normal
+                const left = tmpV.copy(a).addScaledVector(n, ROAD_W / 2);
+                const right = tmpV.copy(a).addScaledVector(n, -ROAD_W / 2);
+                // positions (two vertices per segment row)
+                posAttr.set([left.x, left.y, left.z], i * 6 + 0);
+                posAttr.set([right.x, right.y, right.z], i * 6 + 3);
+            }
+            // indices (two triangles per segment)
+            for (let i = 0; i < N; i++) {
+                const i0 = i * 2;
+                const i1 = i * 2 + 1;
+                const i2 = ((i + 1) % N) * 2;
+                const i3 = ((i + 1) % N) * 2 + 1;
+                const id = i * 6;
+                idx[id + 0] = i0; idx[id + 1] = i2; idx[id + 2] = i1;
+                idx[id + 3] = i1; idx[id + 4] = i2; idx[id + 5] = i3;
+            }
+
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.BufferAttribute(posAttr, 3));
+            geo.setIndex(new THREE.BufferAttribute(idx, 1));
+            geo.computeVertexNormals();
+
+            const roadMat = new THREE.MeshStandardMaterial({ color: 0x2b313a, roughness: 0.95, metalness: 0.0 });
+            const road = new THREE.Mesh(geo, roadMat);
+            road.receiveShadow = true;
+            scene.add(road);
+
+            // Centerline stripes
+            const stripes = new THREE.Group();
+            scene.add(stripes);
+            const stripeMat = new THREE.MeshBasicMaterial({ color: 0xffe07a });
+            const stripeLen = 5, stripeW = 0.4, spacing = 8;
+            const steps = Math.floor(trackLen / spacing);
+            for (let i = 0; i < steps; i++) {
+                const u = i / steps; // 0..1
+                const s = u * Math.PI * 2;
+                const p = new THREE.Vector3(Math.cos(s) * A, 0.01, Math.sin(s) * B);
+                const t = new THREE.Vector3(-Math.sin(s) * A, 0, Math.cos(s) * B).normalize();
+                const stripe = new THREE.Mesh(new THREE.PlaneGeometry(stripeLen, stripeW), stripeMat);
+                stripe.rotation.x = -Math.PI / 2;
+                // orient along tangent
+                stripe.position.copy(p);
+                stripe.rotation.z = Math.atan2(t.z, t.x); // rotate in plane
+                stripes.add(stripe);
+            }
+
+            function projectToTrack(point) {
+                // brute-force segment projection
+                let bestI = 0, bestT = 0, bestD2 = Infinity, bestP = new THREE.Vector3();
+                for (let i = 0; i < N; i++) {
+                    const p0 = center[i];
+                    const p1 = center[(i + 1) % N];
+                    const v = tmpV.copy(p1).sub(p0);
+                    const w = tmpT.copy(point).sub(p0);
+                    const t = THREE.MathUtils.clamp(w.dot(v) / v.lengthSq(), 0, 1);
+                    const cand = tmpV.copy(p0).addScaledVector(v, t);
+                    const d2 = cand.distanceToSquared(point);
+                    if (d2 < bestD2) {
+                        bestD2 = d2; bestI = i; bestT = t; bestP.copy(cand);
+                    }
+                }
+                // tangent and left normal
+                const p0 = center[bestI];
+                const p1 = center[(bestI + 1) % N];
+                const tangent = tmpV.copy(p1).sub(p0).normalize();
+                const normal = new THREE.Vector3(-tangent.z, 0, tangent.x); // left
+                const signedDist = tmpT.copy(point).sub(bestP).dot(normal);
+                const u = (cumul[bestI] + bestT * segmentLength[bestI]) / trackLen;
+                return { point: bestP.clone(), tangent: tangent.clone(), normal: normal.clone(), signedDist, distance: Math.abs(signedDist), u: (u + 1) % 1 };
+            }
+
+            return { A, B, ROAD_W, road, center, projectToTrack, trackLen };
+        })();
+
+        // Car
+        function createCar() {
+            const car = new THREE.Group();
+
+            // Body
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0xff4b4b, roughness: 0.5, metalness: 0.2 });
+            const base = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.6, 4.2), bodyMat);
+            base.position.y = 0.6;
+            car.add(base);
+
+            const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.6, 2.2), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 }));
+            cabin.position.set(0, 1.0, -0.3);
+            car.add(cabin);
+
+            // Wheels
+            const wheelGeo = new THREE.CylinderGeometry(0.45, 0.45, 0.4, 16);
+            wheelGeo.rotateZ(Math.PI / 2);
+            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x222, roughness: 0.9 });
+            const wPositions = [
+                [-0.9, 0.38, 1.35], // FL
+                [0.9, 0.38, 1.35], // FR
+                [-0.9, 0.38, -1.35], // RL
+                [0.9, 0.38, -1.35], // RR
+            ];
+            const wheels = [];
+            for (const p of wPositions) {
+                const w = new THREE.Mesh(wheelGeo, wheelMat);
+                w.position.set(p[0], p[1], p[2]);
+                car.add(w); wheels.push(w);
+            }
+            // Front wheel pivots for steering
+            const flPivot = new THREE.Group(), frPivot = new THREE.Group();
+            flPivot.position.copy(wheels[0].position); frPivot.position.copy(wheels[1].position);
+            car.add(flPivot, frPivot);
+            flPivot.add(wheels[0]); frPivot.add(wheels[1]);
+
+            // Headlights
+            const headMat = new THREE.MeshBasicMaterial({ color: 0xfff7d1 });
+            const hl = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.2), headMat);
+            const hr = hl.clone();
+            hl.position.set(-0.6, 0.9, 2.25); hr.position.set(0.6, 0.9, 2.25);
+            car.add(hl, hr);
+
+            return { group: car, wheels, flPivot, frPivot };
+        }
+
+        const car = createCar();
+        scene.add(car.group);
+
+        // Car physics state
+        const state = {
+            pos: new THREE.Vector3(Track.A + 2, 0, 0), // near start
+            yaw: Math.PI / 2, // along +Z (ellipse tangent at start)
+            speed: 0,
+            steer: 0,
+            wheelBase: 2.4,
+            maxSteer: 0.6,
+            engine: 18.0,     // m/s^2-ish (arcade)
+            brake: 30.0,
+            reverse: 12.0,
+            rolling: 1.6,
+            drag: 0.015,
+            handbrake: 0
+        };
+
+        // Inputs
+        const keys = new Set();
+        addEventListener('keydown', e => {
+            if (e.repeat) return;
+            keys.add(e.key.toLowerCase());
+            if (e.key === 'm' || e.key === 'M') muted = !muted;
+            if (e.key === 'p' || e.key === 'P') togglePause();
+            if (e.key === 'r' || e.key === 'R') restart();
+        });
+        addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
+        renderer.domElement.addEventListener('pointerdown', () => {
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        });
+
+        // Camera follow
+        const camPos = new THREE.Vector3(0, 6, -10);
+        const camTarget = new THREE.Vector3();
+        function updateCamera(dt) {
+            const forward = new THREE.Vector3(Math.cos(state.yaw), 0, Math.sin(state.yaw));
+            const desired = new THREE.Vector3().copy(state.pos).addScaledVector(forward, -8).add(new THREE.Vector3(0, 4 + THREE.MathUtils.clamp(state.speed * 0.04, 0, 3), 0));
+            // smooth follow
+            camera.position.lerp(desired, 1 - Math.exp(-dt * 5));
+            camTarget.lerp(new THREE.Vector3().copy(state.pos).addScaledVector(forward, 4), 1 - Math.exp(-dt * 7));
+            camera.lookAt(camTarget);
+        }
+
+        // Lap timing
+        let lap = 1, lastU = 0, lapStart = performance.now(), bestLap = +(localStorage.getItem('racer_bestLap') || 0);
+        if (bestLap) bestEl.textContent = (bestLap / 1000).toFixed(2) + 's';
+
+        // Game loop state
+        let playing = false, paused = false, last = performance.now();
+
+        function togglePause() { if (!playing) return; paused = !paused; last = performance.now(); }
+        function restart() {
+            // Reset car
+            state.pos.set(Track.A + 2, 0, 0);
+            state.yaw = Math.PI / 2; state.speed = 0; state.steer = 0; state.handbrake = 0;
+            lap = 1; lastU = 0; lapStart = performance.now();
+            lapEl.textContent = lap.toString();
+            playing = true; paused = false;
+            startOverlay.style.display = 'none';
+        }
+
+        startBtn.addEventListener('click', () => {
+            restart();
+            beep(800, 0.08, 'sawtooth', 0.05);
+        });
+
+        // Physics + gameplay update
+        function update(dt) {
+            if (!playing || paused) return;
+
+            // Inputs
+            const up = keys.has('w') || keys.has('arrowup');
+            const down = keys.has('s') || keys.has('arrowdown');
+            const left = keys.has('a') || keys.has('arrowleft');
+            const right = keys.has('d') || keys.has('arrowright');
+            const hand = keys.has(' ') || keys.has('space');
+
+            // Steering
+            const steerInput = (left ? 1 : 0) - (right ? 1 : 0);
+            // reduce steer at high speed
+            const steerLimit = THREE.MathUtils.lerp(state.maxSteer, 0.18, THREE.MathUtils.clamp(state.speed / 70, 0, 1));
+            state.steer = steerLimit * steerInput;
+
+            // Longitudinal
+            const forward = new THREE.Vector3(Math.cos(state.yaw), 0, Math.sin(state.yaw));
+            let accel = 0;
+            if (up) accel += state.engine;
+            if (down) {
+                if (state.speed > 1) accel -= state.brake;
+                else accel -= state.reverse;
+            }
+            // Handbrake amplifies lateral slip (simulate by dragging speed and boosting yaw influence)
+            state.handbrake = hand ? 1 : 0;
+
+            // Off-track handling
+            const proj = Track.projectToTrack(state.pos);
+            const off = Math.max(0, proj.distance - Track.ROAD_W / 2);
+            const edgeZone = Math.max(0, proj.distance - Track.ROAD_W * 0.38);
+            const offPenalty = THREE.MathUtils.clamp(off * 6.0 + edgeZone * 1.2, 0, 10); // extra drag when off
+            const barrier = proj.distance > Track.ROAD_W / 2 + 1.0;
+
+            // Drag/rolling
+            const drag = state.drag * state.speed * state.speed + state.rolling + offPenalty + (state.handbrake ? 6 : 0);
+            const sgn = Math.sign(state.speed);
+            const dv = (accel - sgn * drag) * dt;
+            state.speed += dv;
+            // Clamp speeds
+            const maxFwd = 95, maxRev = -20;
+            state.speed = THREE.MathUtils.clamp(state.speed, maxRev, maxFwd);
+            if (Math.abs(state.speed) < 0.02 && Math.abs(accel) < 0.1) state.speed = 0;
+
+            // Bicycle model yaw
+            const wb = state.wheelBase;
+            const yawRate = (state.speed / wb) * Math.tan(state.steer) * (1 + state.handbrake * 0.6);
+            state.yaw += yawRate * dt;
+
+            // Integrate position
+            state.pos.addScaledVector(forward, state.speed * dt);
+
+            // Soft barrier clamp (keeps car inside)
+            if (barrier) {
+                // snap to boundary, kill speed
+                const side = THREE.MathUtils.clamp(proj.signedDist, -Track.ROAD_W / 2 + 0.2, Track.ROAD_W / 2 - 0.2);
+                state.pos.copy(proj.point).addScaledVector(proj.normal, side);
+                state.speed *= 0.25;
+                beep(220, 0.05, 'triangle', 0.03);
+            }
+
+            // Car transform
+            car.group.position.copy(state.pos).setY(0);
+            car.group.rotation.y = state.yaw;
+            // Small banking effect
+            car.group.rotation.z = THREE.MathUtils.lerp(car.group.rotation.z, -state.steer * THREE.MathUtils.clamp(state.speed / 40, 0, 1) * 0.6, 1 - Math.exp(-dt * 8));
+
+            // Wheel visuals
+            const wheelRot = state.speed * dt / 0.45; // rough
+            for (const w of car.wheels) w.rotation.x += wheelRot;
+            car.flPivot.rotation.y = state.steer;
+            car.frPivot.rotation.y = state.steer;
+
+            // HUD
+            speedEl.textContent = Math.max(0, state.speed * 3.6 | 0); // km/h
+
+            // Lap progress
+            const u = proj.u;
+            const forwardDot = forward.dot(proj.tangent);
+            // detect wrap from ~end -> ~start moving forward
+            if (lastU > 0.8 && u < 0.2 && forwardDot > 0.3) {
+                const now = performance.now();
+                const lapMs = now - lapStart;
+                lapStart = now;
+                lap++;
+                lapEl.textContent = lap.toString();
+                lapTimeEl.textContent = (lapMs / 1000).toFixed(2);
+                if (!bestLap || lapMs < bestLap) {
+                    bestLap = lapMs;
+                    localStorage.setItem('racer_bestLap', String(bestLap));
+                    bestEl.textContent = (bestLap / 1000).toFixed(2) + 's';
+                    beep(900, 0.1, 'sawtooth', 0.06);
+                } else {
+                    beep(700, 0.08, 'square', 0.05);
+                }
+            }
+            lastU = u;
+
+            // Lap time live
+            lapTimeEl.textContent = ((performance.now() - lapStart) / 1000).toFixed(2);
+
+            // Update camera
+            updateCamera(dt);
+        }
+
+        // Render loop
+        function loop(now) {
+            const dt = Math.min(0.033, (now - last) / 1000);
+            last = now;
+
+            if (playing && !paused) update(dt);
+            renderer.render(scene, camera);
+            requestAnimationFrame(loop);
+        }
+        requestAnimationFrame(loop);
+
+        // Resize
+        addEventListener('resize', () => {
+            W = innerWidth; H = innerHeight;
+            renderer.setSize(W, H);
+            camera.aspect = W / H;
+            camera.updateProjectionMatrix();
+        });
+
+        // Start on overlay dismissed
+        startOverlay.style.display = 'grid';
+
+        // Initial camera placement
+        camera.position.set(Track.A + 2 - 8, 6, 0 - 8);
+        camera.lookAt(Track.A + 2, 0, 0);
+    </script>
+</body>
+
+</html>

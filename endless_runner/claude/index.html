@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Slinger Runner</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #1a1a2e, #0f0f1e);
+        }
+
+        #gameCanvas {
+            display: block;
+            image-rendering: crisp-edges;
+        }
+
+        .game-ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-family: 'Courier New', monospace;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            z-index: 10;
+        }
+
+        .score {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .health-bar {
+            width: 200px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid white;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(to right, #ff4444, #ff6666);
+            transition: width 0.3s ease;
+        }
+
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: white;
+            display: none;
+            z-index: 20;
+        }
+
+        .game-over h2 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.9);
+        }
+
+        .restart-btn {
+            padding: 15px 30px;
+            font-size: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .restart-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            z-index: 10;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="game-ui">
+        <div class="score">Score: <span id="scoreValue">0</span></div>
+        <div class="health-bar">
+            <div class="health-fill" id="healthFill" style="width: 100%"></div>
+        </div>
+    </div>
+
+    <div class="instructions">
+        <div>SPACE/UP - Jump</div>
+        <div>SPACE (in air near wall) - Stick to Wall</div>
+        <div>X - Shoot Laser</div>
+    </div>
+
+    <div class="game-over" id="gameOver">
+        <h2>GAME OVER</h2>
+        <div style="font-size: 24px; margin-bottom: 20px;">Final Score: <span id="finalScore">0</span></div>
+        <button class="restart-btn" onclick="restartGame()">RESTART</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Set canvas size
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Game variables
+        let gameRunning = true;
+        let score = 0;
+        let gameSpeed = 5;
+        let frameCount = 0;
+
+        // Player object
+        const player = {
+            x: 100,
+            y: canvas.height - 200,
+            width: 40,
+            height: 60,
+            velocityY: 0,
+            velocityX: 0,
+            jumping: false,
+            onGround: false,
+            stickingToWall: false,
+            health: 100,
+            maxHealth: 100,
+            color: '#ff4444',
+            webColor: '#ffffff'
+        };
+
+        // Laser array
+        const lasers = [];
+
+        // Laser class
+        class Laser {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = 30;
+                this.height = 4;
+                this.speed = 15;
+                this.color = '#00ffff';
+                this.particles = [];
+
+                // Create particles for effect
+                for (let i = 0; i < 3; i++) {
+                    this.particles.push({
+                        x: x,
+                        y: y,
+                        vx: Math.random() * 2 - 1,
+                        vy: Math.random() * 2 - 1,
+                        life: 1
+                    });
+                }
+            }
+
+            update() {
+                this.x += this.speed;
+
+                // Update particles
+                this.particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.life -= 0.05;
+                });
+
+                this.particles = this.particles.filter(p => p.life > 0);
+            }
+
+            draw() {
+                // Draw laser beam
+                ctx.save();
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = this.color;
+
+                const gradient = ctx.createLinearGradient(this.x - this.width, this.y, this.x + this.width, this.y);
+                gradient.addColorStop(0, 'rgba(0, 255, 255, 0.2)');
+                gradient.addColorStop(0.5, this.color);
+                gradient.addColorStop(1, 'rgba(0, 255, 255, 0.2)');
+
+                ctx.fillStyle = gradient;
+                ctx.fillRect(this.x, this.y - this.height / 2, this.width, this.height);
+
+                // Draw particles
+                this.particles.forEach(p => {
+                    ctx.globalAlpha = p.life;
+                    ctx.fillStyle = '#00ffff';
+                    ctx.fillRect(p.x, p.y, 3, 3);
+                });
+
+                ctx.restore();
+            }
+        }
+
+        // Platform array
+        const platforms = [];
+
+        // Platform class
+        class Platform {
+            constructor(x, y, width, height, isWall = false) {
+                this.x = x;
+                this.y = y;
+                this.width = width;
+                this.height = height;
+                this.isWall = isWall;
+                this.color = isWall ? '#444466' : '#666688';
+            }
+
+            update() {
+                this.x -= gameSpeed;
+            }
+
+            draw() {
+                // Draw with 2.5D effect
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+
+                // Add depth effect
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.fillRect(this.x, this.y + this.height - 5, this.width, 5);
+
+                if (this.isWall) {
+                    // Add wall texture
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+                    ctx.lineWidth = 1;
+                    for (let i = 0; i < this.width; i += 20) {
+                        ctx.beginPath();
+                        ctx.moveTo(this.x + i, this.y);
+                        ctx.lineTo(this.x + i, this.y + this.height);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        // Enemy array
+        const enemies = [];
+
+        // Enemy class
+        class Enemy {
+            constructor(x, y, type = 'ground') {
+                this.x = x;
+                this.y = y;
+                this.width = 40;
+                this.height = 40;
+                this.type = type;
+                this.health = type === 'flying' ? 1 : 2;
+                this.velocityY = type === 'flying' ? Math.sin(Date.now() * 0.001) * 2 : 0;
+                this.color = type === 'flying' ? '#ff8800' : '#8800ff';
+                this.hitFlash = 0;
+            }
+
+            update() {
+                this.x -= gameSpeed;
+
+                if (this.type === 'flying') {
+                    this.y += Math.sin(Date.now() * 0.003) * 2;
+                }
+
+                if (this.hitFlash > 0) {
+                    this.hitFlash--;
+                }
+            }
+
+            takeDamage() {
+                this.health--;
+                this.hitFlash = 10;
+                if (this.health <= 0) {
+                    score += this.type === 'flying' ? 20 : 10;
+                    return true;
+                }
+                return false;
+            }
+
+            draw() {
+                ctx.save();
+
+                if (this.hitFlash > 0) {
+                    ctx.fillStyle = '#ffffff';
+                } else {
+                    ctx.fillStyle = this.color;
+                }
+
+                // Draw enemy with simple shape
+                if (this.type === 'flying') {
+                    // Flying enemy - diamond shape
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + this.width / 2, this.y);
+                    ctx.lineTo(this.x + this.width, this.y + this.height / 2);
+                    ctx.lineTo(this.x + this.width / 2, this.y + this.height);
+                    ctx.lineTo(this.x, this.y + this.height / 2);
+                    ctx.closePath();
+                    ctx.fill();
+                } else {
+                    // Ground enemy - rectangle with spikes
+                    ctx.fillRect(this.x, this.y, this.width, this.height);
+
+                    // Draw spikes
+                    ctx.fillStyle = '#ff0000';
+                    for (let i = 0; i < 3; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(this.x + i * 15 + 5, this.y);
+                        ctx.lineTo(this.x + i * 15 + 10, this.y - 10);
+                        ctx.lineTo(this.x + i * 15 + 15, this.y);
+                        ctx.fill();
+                    }
+                }
+
+                ctx.restore();
+            }
+        }
+
+        // Initialize platforms
+        function initializePlatforms() {
+            // Ground platform
+            platforms.push(new Platform(0, canvas.height - 100, canvas.width + 200, 100));
+
+            // Add some starting platforms
+            platforms.push(new Platform(400, canvas.height - 200, 150, 20));
+            platforms.push(new Platform(700, canvas.height - 300, 150, 20));
+
+            // Add a wall
+            platforms.push(new Platform(900, canvas.height - 400, 30, 300, true));
+        }
+
+        // Generate new platforms
+        function generatePlatform() {
+            const lastPlatform = platforms[platforms.length - 1];
+
+            if (lastPlatform.x < canvas.width) {
+                const random = Math.random();
+
+                if (random < 0.3) {
+                    // Regular platform
+                    const y = canvas.height - 100 - Math.random() * 400;
+                    const width = 100 + Math.random() * 150;
+                    platforms.push(new Platform(canvas.width, y, width, 20));
+                } else if (random < 0.5) {
+                    // Wall
+                    const height = 200 + Math.random() * 200;
+                    const y = canvas.height - 100 - height;
+                    platforms.push(new Platform(canvas.width, y, 30, height, true));
+                } else {
+                    // Ground continuation
+                    platforms.push(new Platform(canvas.width, canvas.height - 100, 300, 100));
+                }
+            }
+        }
+
+        // Generate enemies
+        function generateEnemy() {
+            if (Math.random() < 0.02 && enemies.length < 5) {
+                const type = Math.random() < 0.5 ? 'ground' : 'flying';
+                const y = type === 'flying' ?
+                    canvas.height - 300 - Math.random() * 200 :
+                    canvas.height - 140;
+
+                enemies.push(new Enemy(canvas.width, y, type));
+            }
+        }
+
+        // Handle input
+        const keys = {};
+
+        window.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+
+            if (e.key === ' ' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (player.onGround) {
+                    player.velocityY = -20;
+                    player.jumping = true;
+                    player.onGround = false;
+                } else if (player.stickingToWall) {
+                    player.velocityY = -18;
+                    player.velocityX = -5;
+                    player.stickingToWall = false;
+                }
+            }
+
+            if (e.key === 'x' || e.key === 'X') {
+                shootLaser();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        // Shoot laser
+        function shootLaser() {
+            if (gameRunning && lasers.length < 5) {
+                lasers.push(new Laser(player.x + player.width, player.y + player.height / 2));
+            }
+        }
+
+        // Check collision
+        function checkCollision(rect1, rect2) {
+            return rect1.x < rect2.x + rect2.width &&
+                rect1.x + rect1.width > rect2.x &&
+                rect1.y < rect2.y + rect2.height &&
+                rect1.y + rect1.height > rect2.y;
+        }
+
+        // Update player
+        function updatePlayer() {
+            if (!player.stickingToWall) {
+                // Apply gravity
+                player.velocityY += 0.8;
+
+                // Apply horizontal velocity
+                player.x += player.velocityX;
+                player.velocityX *= 0.9; // Friction
+            } else {
+                // Slowly slide down wall
+                player.velocityY = 2;
+            }
+
+            // Update position
+            player.y += player.velocityY;
+
+            // Reset ground flag
+            player.onGround = false;
+            player.stickingToWall = false;
+
+            // Check platform collisions
+            for (let platform of platforms) {
+                if (checkCollision(player, platform)) {
+                    // Check if it's a wall and player is in the air
+                    if (platform.isWall && !player.onGround && keys[' ']) {
+                        // Stick to wall
+                        player.stickingToWall = true;
+                        player.x = platform.x - player.width;
+                        player.velocityY = 0;
+                        player.velocityX = 0;
+                    } else if (player.velocityY > 0 && player.y < platform.y) {
+                        // Landing on top of platform
+                        player.y = platform.y - player.height;
+                        player.velocityY = 0;
+                        player.onGround = true;
+                        player.jumping = false;
+                    }
+                }
+            }
+
+            // Keep player in bounds
+            if (player.x < 50) {
+                player.x = 50;
+                player.velocityX = 0;
+            }
+
+            if (player.x > canvas.width / 2) {
+                player.x = canvas.width / 2;
+            }
+
+            // Check if player fell off screen
+            if (player.y > canvas.height) {
+                gameOver();
+            }
+        }
+
+        // Draw player
+        function drawPlayer() {
+            ctx.save();
+
+            // Draw player body
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+
+            // Draw eyes
+            ctx.fillStyle = 'white';
+            ctx.fillRect(player.x + 8, player.y + 10, 8, 8);
+            ctx.fillRect(player.x + 24, player.y + 10, 8, 8);
+
+            // Draw web effect when sticking to wall
+            if (player.stickingToWall) {
+                ctx.strokeStyle = player.webColor;
+                ctx.lineWidth = 2;
+                ctx.globalAlpha = 0.8;
+
+                // Draw web lines
+                for (let i = 0; i < 3; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(player.x + player.width, player.y + 10 + i * 15);
+                    ctx.lineTo(player.x + player.width + 30, player.y + 10 + i * 15 + Math.sin(Date.now() * 0.01) * 5);
+                    ctx.stroke();
+                }
+            }
+
+            // Draw jumping effect
+            if (player.jumping && !player.onGround) {
+                ctx.globalAlpha = 0.5;
+                ctx.fillStyle = '#ffaaaa';
+                ctx.fillRect(player.x - 5, player.y + player.height, player.width + 10, 5);
+            }
+
+            ctx.restore();
+        }
+
+        // Update game
+        function updateGame() {
+            if (!gameRunning) return;
+
+            frameCount++;
+
+            // Increase difficulty over time
+            if (frameCount % 600 === 0) {
+                gameSpeed += 0.5;
+            }
+
+            // Update score
+            score += 1;
+            document.getElementById('scoreValue').textContent = Math.floor(score / 10);
+
+            // Update player
+            updatePlayer();
+
+            // Generate platforms and enemies
+            generatePlatform();
+            generateEnemy();
+
+            // Update platforms
+            platforms.forEach(platform => platform.update());
+            platforms.splice(0, platforms.filter(p => p.x + p.width < -100).length);
+
+            // Update enemies
+            enemies.forEach(enemy => enemy.update());
+
+            // Check enemy collisions with player
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                if (checkCollision(player, enemies[i])) {
+                    player.health -= 10;
+                    enemies.splice(i, 1);
+                    updateHealthBar();
+
+                    if (player.health <= 0) {
+                        gameOver();
+                    }
+                }
+            }
+
+            // Update lasers
+            lasers.forEach(laser => laser.update());
+
+            // Check laser collisions with enemies
+            for (let i = lasers.length - 1; i >= 0; i--) {
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    if (checkCollision(lasers[i], enemies[j])) {
+                        if (enemies[j].takeDamage()) {
+                            enemies.splice(j, 1);
+                        }
+                        lasers.splice(i, 1);
+                        break;
+                    }
+                }
+            }
+
+            // Remove off-screen lasers and enemies
+            lasers.splice(0, lasers.filter(l => l.x > canvas.width).length);
+            enemies.splice(0, enemies.filter(e => e.x + e.width < -100).length);
+        }
+
+        // Draw background
+        function drawBackground() {
+            // Create parallax city background
+            ctx.fillStyle = '#0a0a1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw stars
+            ctx.fillStyle = 'white';
+            for (let i = 0; i < 50; i++) {
+                const x = (i * 73 + frameCount * 0.1) % canvas.width;
+                const y = (i * 37) % (canvas.height / 2);
+                ctx.globalAlpha = 0.3 + (i % 3) * 0.2;
+                ctx.fillRect(x, y, 1 + (i % 2), 1 + (i % 2));
+            }
+
+            ctx.globalAlpha = 1;
+
+            // Draw city silhouette
+            ctx.fillStyle = '#1a1a3a';
+            for (let i = 0; i < 20; i++) {
+                const x = (i * 150 - frameCount * 0.5) % (canvas.width + 150) - 150;
+                const height = 100 + (i * 47) % 200;
+                ctx.fillRect(x, canvas.height - 100 - height, 120, height);
+            }
+        }
+
+        // Update health bar
+        function updateHealthBar() {
+            const healthPercent = Math.max(0, player.health / player.maxHealth * 100);
+            document.getElementById('healthFill').style.width = healthPercent + '%';
+        }
+
+        // Game over
+        function gameOver() {
+            gameRunning = false;
+            document.getElementById('finalScore').textContent = Math.floor(score / 10);
+            document.getElementById('gameOver').style.display = 'block';
+        }
+
+        // Restart game
+        function restartGame() {
+            gameRunning = true;
+            score = 0;
+            gameSpeed = 5;
+            frameCount = 0;
+
+            player.x = 100;
+            player.y = canvas.height - 200;
+            player.velocityY = 0;
+            player.velocityX = 0;
+            player.health = player.maxHealth;
+            player.onGround = false;
+            player.stickingToWall = false;
+
+            platforms.length = 0;
+            enemies.length = 0;
+            lasers.length = 0;
+
+            initializePlatforms();
+            updateHealthBar();
+
+            document.getElementById('gameOver').style.display = 'none';
+        }
+
+        // Game loop
+        function gameLoop() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw everything
+            drawBackground();
+
+            // Draw platforms
+            platforms.forEach(platform => platform.draw());
+
+            // Draw enemies
+            enemies.forEach(enemy => enemy.draw());
+
+            // Draw lasers
+            lasers.forEach(laser => laser.draw());
+
+            // Draw player
+            drawPlayer();
+
+            // Update game state
+            updateGame();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Initialize game
+        initializePlatforms();
+        gameLoop();
+
+        // Make restart function global
+        window.restartGame = restartGame;
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#6366f1">
+    <title>Productivity Suite + Capture</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <style>
+        /* Keeping original styles and adding new ones */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #6366f1; --primary-dark: #4f46e5; --secondary: #8b5cf6;
+            --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
+            --dark: #1f2937; --dark-light: #374151; --light: #f3f4f6;
+            --white: #ffffff; --text: #1f2937; --text-light: #6b7280;
+            --border: #e5e7eb; --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        [data-theme="dark"] {
+            --dark: #f3f4f6; --dark-light: #e5e7eb; --light: #1f2937;
+            --white: #111827; --text: #f9fafb; --text-light: #d1d5db; --border: #374151;
+        }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--light); color: var(--text); transition: all 0.3s ease; padding-bottom: 50px;}
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        
+        /* Header */
+        header { background: var(--white); padding: 20px; border-radius: 15px; box-shadow: var(--shadow); margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
+        .logo { display: flex; align-items: center; gap: 10px; font-size: 24px; font-weight: bold; color: var(--primary); }
+        .header-controls { display: flex; gap: 10px; align-items: center; }
+
+        /* Tabs */
+        .tabs { display: flex; gap: 10px; background: var(--white); padding: 10px; border-radius: 15px; box-shadow: var(--shadow); margin-bottom: 30px; overflow-x: auto; }
+        .tab { padding: 12px 24px; border: none; background: transparent; color: var(--text-light); cursor: pointer; border-radius: 10px; font-size: 16px; font-weight: 500; transition: all 0.3s ease; white-space: nowrap; }
+        .tab:hover { background: var(--light); }
+        .tab.active { background: var(--primary); color: white; }
+        .tab-content { display: none; animation: fadeIn 0.3s ease; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Common Elements */
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 5px; color: white; }
+        .btn-primary { background: var(--primary); }
+        .btn-secondary { background: var(--secondary); }
+        .btn-success { background: var(--success); }
+        .btn-danger { background: var(--danger); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .card { background: var(--white); border-radius: 15px; padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+        .card-header { font-size: 20px; font-weight: 600; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+        input, textarea, select { width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 8px; margin-bottom: 10px; background: var(--white); color: var(--text); }
+        
+        /* Video Capture Styles */
+        .video-preview-container {
+            width: 100%;
+            height: 400px;
+            background: #000;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        video { max-width: 100%; max-height: 100%; }
+        .recording-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(239, 68, 68, 0.9);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+            display: none;
+        }
+        .capture-controls { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
+        .recording-timer { font-family: monospace; font-size: 24px; margin-bottom: 20px; text-align: center; }
+
+        /* Grid & Layouts from original */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+        .stat-card { background: var(--white); padding: 20px; border-radius: 12px; box-shadow: var(--shadow); text-align: center; }
+        .stat-value { font-size: 32px; font-weight: 700; margin: 10px 0; }
+        .notes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .note { background: var(--white); padding: 20px; border-radius: 12px; border-left: 4px solid var(--primary); box-shadow: var(--shadow); }
+        .todo-item { background: var(--white); padding: 15px; margin-bottom: 10px; border-radius: 10px; display: flex; align-items: center; gap: 15px; box-shadow: var(--shadow); }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: var(--white); padding: 30px; border-radius: 15px; width: 90%; max-width: 500px; }
+        .toast { position: fixed; bottom: 20px; right: 20px; background: var(--dark); color: white; padding: 15px 20px; border-radius: 8px; display: none; z-index: 2000; }
+        .toast.show { display: block; animation: slideIn 0.3s ease; }
+        
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+        /* Responsive */
+        @media (max-width: 768px) { header { flex-direction: column; } .video-preview-container { height: 250px; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="logo">
+                <span>🚀</span>
+                <span>Productivity Suite</span>
+            </div>
+            <div class="header-controls">
+                <button class="btn btn-secondary" onclick="toggleTheme()">🌓 Theme</button>
+                <button class="btn btn-secondary" onclick="exportData()">📥 Export</button>
+                <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">📤 Import</button>
+                <input type="file" id="importFile" style="display: none" accept=".json" onchange="importData(event)">
+            </div>
+        </header>
+
+        <!-- Tabs Navigation -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('dashboard')">📊 Dashboard</button>
+            <button class="tab" onclick="switchTab('notes')">📝 Notes</button>
+            <button class="tab" onclick="switchTab('todos')">✅ Todos</button>
+            <button class="tab" onclick="switchTab('timer')">⏰ Timer</button>
+            <button class="tab" onclick="switchTab('budget')">💰 Budget</button>
+            <button class="tab" onclick="switchTab('capture')">🎥 Capture</button>
+        </div>
+
+        <!-- Dashboard Tab -->
+        <div id="dashboard" class="tab-content active">
+            <div class="card">
+                <h2 class="card-header">📊 Overview</h2>
+                <div class="stats-grid">
+                    <div class="stat-card"><div class="stat-label">Notes</div><div class="stat-value" id="dashNoteCount">0</div></div>
+                    <div class="stat-card"><div class="stat-label">Active Todos</div><div class="stat-value" id="dashTodoCount">0</div></div>
+                    <div class="stat-card"><div class="stat-label">Reminders</div><div class="stat-value" id="dashReminderCount">0</div></div>
+                    <div class="stat-card"><div class="stat-label">Balance</div><div class="stat-value" id="dashBalance">$0</div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Capture Tab (New Feature) -->
+        <div id="capture" class="tab-content">
+            <div class="card">
+                <h2 class="card-header">🎥 Screen Recording & Screenshots</h2>
+                
+                <div class="video-preview-container">
+                    <video id="videoPreview" autoplay muted playsinline></video>
+                    <div id="recordingIndicator" class="recording-indicator">
+                        <span>●</span> REC
+                    </div>
+                    <div id="noSourceMsg" style="color: #666;">Select a source to begin</div>
+                </div>
+
+                <div class="recording-timer" id="recTimer">00:00</div>
+
+                <div class="capture-controls">
+                    <button id="btnStartRec" class="btn btn-primary" onclick="startRecording()">
+                        ⏺️ Start Recording
+                    </button>
+                    <button id="btnStopRec" class="btn btn-danger" onclick="stopRecording()" disabled>
+                        ⏹️ Stop Recording
+                    </button>
+                    <button id="btnScreenshot" class="btn btn-secondary" onclick="takeScreenshot()">
+                        📸 Take Screenshot
+                    </button>
+                </div>
+
+                <div style="margin-top: 20px; font-size: 0.9em; color: var(--text-light); text-align: center;">
+                    <p>Note: Recordings are saved as .webm files. Screenshots are saved as .png.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notes Tab -->
+        <div id="notes" class="tab-content">
+            <div class="card">
+                <h2 class="card-header">📝 Notes <button class="btn btn-primary" onclick="showModal('noteModal')">+ New</button></h2>
+                <input type="search" id="noteSearch" placeholder="Search notes..." oninput="renderNotes()">
+                <div class="notes-grid" id="notesContainer"></div>
+            </div>
+        </div>
+
+        <!-- Todos Tab -->
+        <div id="todos" class="tab-content">
+            <div class="card">
+                <h2 class="card-header">✅ Todos <button class="btn btn-primary" onclick="showModal('todoModal')">+ New</button></h2>
+                <div id="todosContainer"></div>
+            </div>
+        </div>
+
+        <!-- Timer Tab -->
+        <div id="timer" class="tab-content">
+            <div class="card">
+                <h2 class="card-header">⏰ Pomodoro</h2>
+                <div style="text-align: center; padding: 20px;">
+                    <div style="font-size: 64px; font-family: monospace; margin-bottom: 20px;" id="timerDisplay">25:00</div>
+                    <button class="btn btn-primary" onclick="startTimer()">Start</button>
+                    <button class="btn btn-secondary" onclick="pauseTimer()">Pause</button>
+                    <button class="btn btn-danger" onclick="resetTimer()">Reset</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Budget Tab -->
+        <div id="budget" class="tab-content">
+            <div class="card">
+                <h2 class="card-header">💰 Budget</h2>
+                <div class="stats-grid" style="margin-bottom: 20px;">
+                    <div class="stat-card">Income <div class="stat-value" style="color: var(--success)" id="totalIncome">$0</div></div>
+                    <div class="stat-card">Expense <div class="stat-value" style="color: var(--danger)" id="totalExpense">$0</div></div>
+                </div>
+                <button class="btn btn-success" onclick="showTransModal('income')">+ Income</button>
+                <button class="btn btn-danger" onclick="showTransModal('expense')">- Expense</button>
+                <div id="transactionsContainer" style="margin-top: 20px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="noteModal" class="modal">
+        <div class="modal-content">
+            <h3>New Note</h3>
+            <input id="noteTitle" placeholder="Title">
+            <textarea id="noteContent" placeholder="Content" rows="5"></textarea>
+            <button class="btn btn-primary" onclick="saveNote()">Save</button>
+            <button class="btn btn-secondary" onclick="closeModal('noteModal')">Cancel</button>
+        </div>
+    </div>
+
+    <div id="todoModal" class="modal">
+        <div class="modal-content">
+            <h3>New Todo</h3>
+            <input id="todoText" placeholder="Task">
+            <button class="btn btn-primary" onclick="saveTodo()">Save</button>
+            <button class="btn btn-secondary" onclick="closeModal('todoModal')">Cancel</button>
+        </div>
+    </div>
+
+    <div id="transModal" class="modal">
+        <div class="modal-content">
+            <h3 id="transTitle">Transaction</h3>
+            <input id="transDesc" placeholder="Description">
+            <input type="number" id="transAmount" placeholder="Amount">
+            <button class="btn btn-primary" onclick="saveTransaction()">Save</button>
+            <button class="btn btn-secondary" onclick="closeModal('transModal')">Cancel</button>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+    <canvas id="captureCanvas" style="display: none;"></canvas>
+
+    <script>
+        // --- PWA Registration ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('SW Registered'))
+                    .catch(err => console.log('SW Error', err));
+            });
+        }
+
+        // --- State ---
+        let data = {
+            notes: JSON.parse(localStorage.getItem('notes')) || [],
+            todos: JSON.parse(localStorage.getItem('todos')) || [],
+            transactions: JSON.parse(localStorage.getItem('transactions')) || []
+        };
+        let mediaRecorder;
+        let recordedChunks = [];
+        let stream = null;
+        let timerInterval;
+        let recTimerInterval;
+        let recSeconds = 0;
+
+        // --- Initialization ---
+        function init() {
+            renderNotes();
+            renderTodos();
+            renderTransactions();
+            updateDashboard();
+            
+            // Theme
+            const theme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+        }
+
+        // --- Capture Logic ---
+        async function getStream() {
+            try {
+                // Ask for screen selection
+                stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { cursor: "always" },
+                    audio: true
+                });
+                
+                const video = document.getElementById('videoPreview');
+                video.srcObject = stream;
+                document.getElementById('noSourceMsg').style.display = 'none';
+
+                // Listen for "Stop Sharing" via browser UI
+                stream.getVideoTracks()[0].onended = () => {
+                    stopRecordingLogic();
+                    video.srcObject = null;
+                    document.getElementById('noSourceMsg').style.display = 'block';
+                    stream = null;
+                };
+                return stream;
+            } catch (err) {
+                console.error("Error: " + err);
+                return null;
+            }
+        }
+
+        async function startRecording() {
+            if (!stream) {
+                stream = await getStream();
+            }
+            if (!stream) return;
+
+            recordedChunks = [];
+            mediaRecorder = new MediaRecorder(stream);
+
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) recordedChunks.push(e.data);
+            };
+
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `recording-${Date.now()}.webm`;
+                a.click();
+                window.URL.revokeObjectURL(url);
+                showToast('Recording saved! 📥');
+            };
+
+            mediaRecorder.start();
+            document.getElementById('btnStartRec').disabled = true;
+            document.getElementById('btnStopRec').disabled = false;
+            document.getElementById('btnScreenshot').disabled = true; // Disable screenshot during video rec
+            document.getElementById('recordingIndicator').style.display = 'flex';
+            
+            // Timer
+            recSeconds = 0;
+            recTimerInterval = setInterval(() => {
+                recSeconds++;
+                const mins = Math.floor(recSeconds / 60).toString().padStart(2, '0');
+                const secs = (recSeconds % 60).toString().padStart(2, '0');
+                document.getElementById('recTimer').textContent = `${mins}:${secs}`;
+            }, 1000);
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                stopRecordingLogic();
+            }
+        }
+
+        function stopRecordingLogic() {
+            clearInterval(recTimerInterval);
+            document.getElementById('recTimer').textContent = "00:00";
+            document.getElementById('btnStartRec').disabled = false;
+            document.getElementById('btnStopRec').disabled = true;
+            document.getElementById('btnScreenshot').disabled = false;
+            document.getElementById('recordingIndicator').style.display = 'none';
+            
+            // Stop stream tracks to release memory if not just pausing
+            if(stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+                document.getElementById('videoPreview').srcObject = null;
+                document.getElementById('noSourceMsg').style.display = 'block';
+            }
+        }
+
+        async function takeScreenshot() {
+            // Temporarily start stream just for a frame
+            if (!stream) {
+                stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+            }
+            
+            const track = stream.getVideoTracks()[0];
+            const imageCapture = new ImageCapture(track);
+            
+            try {
+                const bitmap = await imageCapture.grabFrame();
+                const canvas = document.getElementById('captureCanvas');
+                canvas.width = bitmap.width;
+                canvas.height = bitmap.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(bitmap, 0, 0);
+                
+                const link = document.createElement('a');
+                link.download = `screenshot-${Date.now()}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+                showToast('Screenshot captured! 📸');
+                
+                // Clean up immediately
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            } catch (err) {
+                console.error(err);
+                showToast('Error taking screenshot');
+            }
+        }
+
+        // --- Core Logic (Simplified from original for brevity) ---
+        function switchTab(id) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(id).classList.add('active');
+        }
+
+        function showModal(id) { document.getElementById(id).classList.add('active'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+        
+        let transType = 'income';
+        function showTransModal(type) {
+            transType = type;
+            document.getElementById('transTitle').textContent = type === 'income' ? 'Add Income' : 'Add Expense';
+            showModal('transModal');
+        }
+
+        function saveNote() {
+            const n = { id: Date.now(), title: document.getElementById('noteTitle').value, content: document.getElementById('noteContent').value };
+            data.notes.push(n); saveData('notes'); renderNotes(); closeModal('noteModal');
+        }
+
+        function saveTodo() {
+            data.todos.push({ id: Date.now(), text: document.getElementById('todoText').value, completed: false });
+            saveData('todos'); renderTodos(); closeModal('todoModal');
+        }
+
+        function saveTransaction() {
+            const amt = parseFloat(document.getElementById('transAmount').value);
+            data.transactions.push({ id: Date.now(), desc: document.getElementById('transDesc').value, amount: amt, type: transType });
+            saveData('transactions'); renderTransactions(); closeModal('transModal');
+        }
+
+        function renderNotes() {
+            const term = document.getElementById('noteSearch').value.toLowerCase();
+            const html = data.notes.filter(n => n.title.toLowerCase().includes(term)).map(n => `
+                <div class="note"><h3>${n.title}</h3><p>${n.content}</p>
+                <button class="btn btn-danger btn-small" style="margin-top:10px" onclick="deleteItem('notes', ${n.id})">Delete</button></div>
+            `).join('');
+            document.getElementById('notesContainer').innerHTML = html || '<p>No notes.</p>';
+        }
+
+        function renderTodos() {
+            const html = data.todos.map(t => `
+                <div class="todo-item" style="opacity: ${t.completed?0.5:1}">
+                    <input type="checkbox" ${t.completed?'checked':''} onchange="toggleTodo(${t.id})">
+                    <span style="flex:1; text-decoration: ${t.completed?'line-through':'none'}">${t.text}</span>
+                    <button class="btn btn-danger" onclick="deleteItem('todos', ${t.id})">X</button>
+                </div>
+            `).join('');
+            document.getElementById('todosContainer').innerHTML = html || '<p>No todos.</p>';
+        }
+
+        function renderTransactions() {
+            let inc = 0, exp = 0;
+            const html = data.transactions.map(t => {
+                if(t.type === 'income') inc += t.amount; else exp += t.amount;
+                return `<div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #eee">
+                    <span>${t.desc}</span><span style="color:${t.type==='income'?'var(--success)':'var(--danger)'}">${t.type==='income'?'+':'-'}$${t.amount}</span>
+                </div>`;
+            }).join('');
+            document.getElementById('transactionsContainer').innerHTML = html;
+            document.getElementById('totalIncome').textContent = '$'+inc;
+            document.getElementById('totalExpense').textContent = '$'+exp;
+            document.getElementById('totalBalance').textContent = '$'+(inc-exp);
+            updateDashboard();
+        }
+
+        function updateDashboard() {
+            document.getElementById('dashNoteCount').textContent = data.notes.length;
+            document.getElementById('dashTodoCount').textContent = data.todos.filter(t=>!t.completed).length;
+            let bal = data.transactions.reduce((acc, t) => t.type==='income' ? acc+t.amount : acc-t.amount, 0);
+            document.getElementById('dashBalance').textContent = '$'+bal;
+        }
+
+        function toggleTodo(id) {
+            const t = data.todos.find(x => x.id === id); t.completed = !t.completed;
+            saveData('todos'); renderTodos();
+        }
+
+        function deleteItem(type, id) {
+            data[type] = data[type].filter(x => x.id !== id);
+            saveData(type); 
+            if(type==='notes') renderNotes();
+            if(type==='todos') renderTodos();
+        }
+
+        function saveData(key) { localStorage.setItem(key, JSON.stringify(data[key])); updateDashboard(); }
+        
+        function toggleTheme() {
+            const curr = document.documentElement.getAttribute('data-theme');
+            const next = curr === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg; t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        // Timer Logic
+        let timeLeft = 1500; let isTimerRunning = false;
+        function startTimer() { if(isTimerRunning) return; isTimerRunning=true; timerInterval = setInterval(() => {
+            timeLeft--; updateTimerDisplay(); if(timeLeft<=0) { pauseTimer(); showToast('Time Up!'); }
+        }, 1000); }
+        function pauseTimer() { clearInterval(timerInterval); isTimerRunning=false; }
+        function resetTimer() { pauseTimer(); timeLeft=1500; updateTimerDisplay(); }
+        function updateTimerDisplay() {
+            document.getElementById('timerDisplay').textContent = `${Math.floor(timeLeft/60).toString().padStart(2,'0')}:${(timeLeft%60).toString().padStart(2,'0')}`;
+        }
+
+        function exportData() {
+            const blob = new Blob([JSON.stringify(data)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = 'backup.json'; a.click();
+        }
+
+        function importData(e) {
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                data = JSON.parse(evt.target.result);
+                saveData('notes'); saveData('todos'); saveData('transactions');
+                init();
+            };
+            reader.readAsText(e.target.files[0]);
+        }
+
+        init();
+    </script>
+</body>
+</html>

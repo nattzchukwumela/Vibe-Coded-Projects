@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spider-Man Endless Runner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #1a2980, #26d0ce);
+            font-family: 'Arial', sans-serif;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #gameCanvas {
+            display: block;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            z-index: 10;
+        }
+
+        .control-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(5px);
+            border: 2px solid white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .game-ui {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+        }
+
+        #startScreen,
+        #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            z-index: 20;
+        }
+
+        #gameOverScreen {
+            display: none;
+        }
+
+        .screen-title {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #ff0000;
+            text-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+        }
+
+        .screen-text {
+            font-size: 24px;
+            margin-bottom: 30px;
+            text-align: center;
+            max-width: 80%;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            font-size: 20px;
+            background: #ff0000;
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            background: #cc0000;
+            transform: scale(1.05);
+        }
+
+        .spider-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+            color: #ff0000;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+
+        <div class="game-ui">
+            <div id="score">Score: 0</div>
+            <div id="health">Health: 100</div>
+        </div>
+
+        <div class="controls">
+            <div class="control-btn" id="jumpBtn">↑</div>
+            <div class="control-btn" id="shootBtn">⚡</div>
+        </div>
+
+        <div id="startScreen">
+            <div class="spider-icon">🕷️</div>
+            <h1 class="screen-title">SPIDER-MAN RUNNER</h1>
+            <p class="screen-text">Jump between buildings, shoot enemies, and swing through the city!</p>
+            <p class="screen-text">Controls: ↑ to jump/stick, ⚡ to shoot</p>
+            <button class="btn" id="startBtn">START GAME</button>
+        </div>
+
+        <div id="gameOverScreen">
+            <div class="spider-icon">🕷️</div>
+            <h1 class="screen-title">GAME OVER</h1>
+            <p class="screen-text">Your final score: <span id="finalScore">0</span></p>
+            <button class="btn" id="restartBtn">PLAY AGAIN</button>
+        </div>
+    </div>
+    <script>
+        // Game variables
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const startBtn = document.getElementById('startBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        const scoreElement = document.getElementById('score');
+        const healthElement = document.getElementById('health');
+        const finalScoreElement = document.getElementById('finalScore');
+        const jumpBtn = document.getElementById('jumpBtn');
+        const shootBtn = document.getElementById('shootBtn');
+        // Set canvas size
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        // Game state
+        let gameRunning = false;
+        let score = 0;
+        let health = 100;
+        let gameSpeed = 5;
+        // Player object
+        const player = {
+            x: 100,
+            y: canvas.height - 150,
+            width: 40,
+            height: 60,
+            velocityY: 0,
+            isJumping: false,
+            isSticking: false,
+            onWall: false,
+            color: '#ff0000',
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+
+                // Draw spider symbol
+                ctx.fillStyle = 'black';
+                ctx.font = '30px Arial';
+                ctx.fillText('🕷', this.x + 5, this.y + 35);
+            },
+            update() {
+                // Apply gravity if not sticking to wall
+                if (!this.isSticking) {
+                    this.velocityY += 0.5; // Gravity
+                    this.y += this.velocityY;
+                }
+                // Ground collision
+                if (this.y > canvas.height - 150) {
+                    this.y = canvas.height - 150;
+                    this.velocityY = 0;
+                    this.isJumping = false;
+                    this.isSticking = false;
+                }
+                // Ceiling collision
+                if (this.y < 0) {
+                    this.y = 0;
+                    this.velocityY = 0;
+                }
+            },
+            jump() {
+                if (!this.isJumping || this.onWall) {
+                    this.velocityY = -15;
+                    this.isJumping = true;
+                    this.isSticking = false;
+                    this.onWall = false;
+                }
+            },
+            stickToWall() {
+                if (this.onWall && !this.isSticking) {
+                    this.isSticking = true;
+                    this.velocityY = 0;
+                } else if (this.isSticking) {
+                    this.isSticking = false;
+                }
+            }
+        };
+        // Buildings array
+        let buildings = [];
+
+        // Enemies array
+        let enemies = [];
+
+        // Lasers array
+        let lasers = [];
+        // Initialize buildings
+        function initBuildings() {
+            buildings = [];
+            for (let i = 0; i < 5; i++) {
+                buildings.push({
+                    x: i * 300,
+                    width: 100,
+                    height: Math.random() * 200 + 200,
+                    color: '#555'
+                });
+            }
+        }
+        // Create enemy
+        function createEnemy() {
+            if (Math.random() < 0.02) {
+                enemies.push({
+                    x: canvas.width,
+                    y: Math.random() * (canvas.height - 200) + 50,
+                    width: 30,
+                    height: 40,
+                    speed: Math.random() * 2 + 2,
+                    color: '#00ff00'
+                });
+            }
+        }
+        // Shoot laser
+        function shootLaser() {
+            lasers.push({
+                x: player.x + player.width,
+                y: player.y + player.height / 2,
+                width: 20,
+                height: 5,
+                speed: 10,
+                color: '#ffff00'
+            });
+        }
+        // Update game objects
+        function updateGame() {
+            // Move buildings
+            buildings.forEach(building => {
+                building.x -= gameSpeed;
+                if (building.x + building.width < 0) {
+                    building.x = canvas.width;
+                    building.height = Math.random() * 200 + 200;
+                }
+            });
+            // Move enemies
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                enemies[i].x -= enemies[i].speed;
+                if (enemies[i].x + enemies[i].width < 0) {
+                    enemies.splice(i, 1);
+                }
+            }
+            // Move lasers
+            for (let i = lasers.length - 1; i >= 0; i--) {
+                lasers[i].x += lasers[i].speed;
+                if (lasers[i].x > canvas.width) {
+                    lasers.splice(i, 1);
+                }
+            }
+            // Check collisions
+            checkCollisions();
+            // Update player
+            player.update();
+            // Create new enemies
+            createEnemy();
+            // Increase score
+            score++;
+            scoreElement.textContent = `Score: ${score}`;
+            // Increase difficulty over time
+            if (score % 500 === 0) {
+                gameSpeed += 0.5;
+            }
+        }
+        // Check collisions
+        function checkCollisions() {
+            // Player with enemies
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                if (
+                    player.x < enemies[i].x + enemies[i].width &&
+                    player.x + player.width > enemies[i].x &&
+                    player.y < enemies[i].y + enemies[i].height &&
+                    player.y + player.height > enemies[i].y
+                ) {
+                    health -= 20;
+                    healthElement.textContent = `Health: ${health}`;
+                    enemies.splice(i, 1);
+
+                    if (health <= 0) {
+                        gameOver();
+                    }
+                }
+            }
+            // Lasers with enemies
+            for (let i = lasers.length - 1; i >= 0; i--) {
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    if (
+                        lasers[i].x < enemies[j].x + enemies[j].width &&
+                        lasers[i].x + lasers[i].width > enemies[j].x &&
+                        lasers[i].y < enemies[j].y + enemies[j].height &&
+                        lasers[i].y + lasers[i].height > enemies[j].y
+                    ) {
+                        lasers.splice(i, 1);
+                        enemies.splice(j, 1);
+                        score += 50;
+                        break;
+                    }
+                }
+            }
+            // Player with buildings (wall detection)
+            player.onWall = false;
+            buildings.forEach(building => {
+                if (
+                    player.x + player.width > building.x &&
+                    player.x < building.x + building.width &&
+                    player.y + player.height > canvas.height - building.height &&
+                    player.y < canvas.height
+                ) {
+                    player.onWall = true;
+                }
+            });
+        }
+        // Draw everything
+        function drawGame() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Draw sky gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, "#1a2980");
+            gradient.addColorStop(1, "#26d0ce");
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // Draw buildings
+            buildings.forEach(building => {
+                ctx.fillStyle = building.color;
+                ctx.fillRect(
+                    building.x,
+                    canvas.height - building.height,
+                    building.width,
+                    building.height
+                );
+
+                // Draw windows
+                ctx.fillStyle = '#ffff99';
+                for (let i = 0; i < 5; i++) {
+                    for (let j = 0; j < Math.floor(building.height / 30); j++) {
+                        if (Math.random() > 0.3) {
+                            ctx.fillRect(
+                                building.x + 10 + i * 15,
+                                canvas.height - building.height + 10 + j * 30,
+                                8,
+                                15
+                            );
+                        }
+                    }
+                }
+            });
+            // Draw ground
+            ctx.fillStyle = '#333';
+            ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+            // Draw player
+            player.draw();
+            // Draw enemies
+            enemies.forEach(enemy => {
+                ctx.fillStyle = enemy.color;
+                ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+
+                // Enemy eyes
+                ctx.fillStyle = 'red';
+                ctx.fillRect(enemy.x + 5, enemy.y + 10, 5, 5);
+                ctx.fillRect(enemy.x + 20, enemy.y + 10, 5, 5);
+            });
+            // Draw lasers
+            lasers.forEach(laser => {
+                ctx.fillStyle = laser.color;
+                ctx.fillRect(laser.x, laser.y, laser.width, laser.height);
+
+                // Laser glow effect
+                ctx.fillStyle = 'rgba(255, 255, 0, 0.5)';
+                ctx.fillRect(laser.x - 2, laser.y - 2, laser.width + 4, laser.height + 4);
+            });
+        }
+        // Game loop
+        function gameLoop() {
+            if (gameRunning) {
+                updateGame();
+                drawGame();
+                requestAnimationFrame(gameLoop);
+            }
+        }
+        // Start game
+        function startGame() {
+            gameRunning = true;
+            score = 0;
+            health = 100;
+            gameSpeed = 5;
+            enemies = [];
+            lasers = [];
+            player.x = 100;
+            player.y = canvas.height - 150;
+            player.isJumping = false;
+            player.isSticking = false;
+            player.onWall = false;
+
+            scoreElement.textContent = `Score: ${score}`;
+            healthElement.textContent = `Health: ${health}`;
+
+            initBuildings();
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            gameLoop();
+        }
+        // Game over
+        function gameOver() {
+            gameRunning = false;
+            finalScoreElement.textContent = score;
+            gameOverScreen.style.display = 'flex';
+        }
+        // Event listeners
+        startBtn.addEventListener('click', startGame);
+        restartBtn.addEventListener('click', startGame);
+
+        jumpBtn.addEventListener('click', () => {
+            if (gameRunning) {
+                if (player.onWall) {
+                    player.stickToWall();
+                } else {
+                    player.jump();
+                }
+            }
+        });
+
+        shootBtn.addEventListener('click', () => {
+            if (gameRunning) {
+                shootLaser();
+            }
+        });
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (!gameRunning) return;
+
+            switch (e.key) {
+                case 'ArrowUp':
+                case ' ':
+                case 'w':
+                case 'W':
+                    if (player.onWall) {
+                        player.stickToWall();
+                    } else {
+                        player.jump();
+                    }
+                    break;
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    // Not implemented in this version
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    // Not implemented in this version
+                    break;
+                case 's':
+                case 'S':
+                    // Shoot laser
+                    shootLaser();
+                    break;
+            }
+        });
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+        // Initialize buildings at start
+        initBuildings();
+    </script>
+</body>
+
+</html>
