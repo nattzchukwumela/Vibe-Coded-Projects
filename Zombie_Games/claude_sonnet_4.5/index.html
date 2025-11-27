@@ -278,39 +278,12 @@
                 this.angle = angle;
                 this.color = '#ffff00';
                 this.damage = 1;
+                this.dead = false; // Flag to mark for removal
             }
 
             update() {
                 this.x += Math.cos(this.angle) * this.speed;
                 this.y += Math.sin(this.angle) * this.speed;
-
-                // Check collision with zombies
-                for (let i = zombies.length - 1; i >= 0; i--) {
-                    const zombie = zombies[i];
-                    const dx = this.x - zombie.x;
-                    const dy = this.y - zombie.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-
-                    if (dist < this.radius + zombie.radius) {
-                        zombie.health -= this.damage;
-
-                        if (zombie.health <= 0) {
-                            zombies.splice(i, 1);
-                            kills++;
-                            zombiesKilledInWave++;
-                            score += 10 * wave;
-                            createParticles(zombie.x, zombie.y, zombie.color);
-
-                            // Check if wave is complete
-                            if (zombiesKilledInWave >= zombiesInWave) {
-                                nextWave();
-                            }
-                        }
-
-                        bullets.splice(bullets.indexOf(this), 1);
-                        return;
-                    }
-                }
             }
 
             draw() {
@@ -424,6 +397,42 @@
             }
         }
 
+        // Check bullet-zombie collisions separately
+        function checkBulletCollisions() {
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+
+                for (let j = zombies.length - 1; j >= 0; j--) {
+                    const zombie = zombies[j];
+                    const dx = bullet.x - zombie.x;
+                    const dy = bullet.y - zombie.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < bullet.radius + zombie.radius) {
+                        zombie.health -= bullet.damage;
+                        bullet.dead = true;
+
+                        if (zombie.health <= 0) {
+                            createParticles(zombie.x, zombie.y, zombie.color);
+                            zombies.splice(j, 1);
+                            kills++;
+                            zombiesKilledInWave++;
+                            score += 10 * wave;
+
+                            // Check if wave is complete
+                            if (zombiesKilledInWave >= zombiesInWave) {
+                                nextWave();
+                            }
+                        }
+                        break; // Bullet can only hit one zombie
+                    }
+                }
+            }
+
+            // Remove dead bullets
+            bullets = bullets.filter(bullet => !bullet.dead && !bullet.isOffScreen());
+        }
+
         // Draw player
         function drawPlayer() {
             // Body
@@ -470,10 +479,10 @@
             let dx = 0;
             let dy = 0;
 
-            if (keys['w'] || keys['ArrowUp']) dy -= 1;
-            if (keys['s'] || keys['ArrowDown']) dy += 1;
-            if (keys['a'] || keys['ArrowLeft']) dx -= 1;
-            if (keys['d'] || keys['ArrowRight']) dx += 1;
+            if (keys['w'] || keys['arrowup']) dy -= 1;
+            if (keys['s'] || keys['arrowdown']) dy += 1;
+            if (keys['a'] || keys['arrowleft']) dx -= 1;
+            if (keys['d'] || keys['arrowright']) dx += 1;
 
             // Normalize diagonal movement
             if (dx !== 0 && dy !== 0) {
@@ -522,11 +531,8 @@
             document.getElementById('gameOver').style.display = 'block';
         }
 
-        // Game loop
-        function gameLoop() {
-            if (!gameRunning) return;
-
-            // Clear canvas
+        // Draw background
+        function drawBackground() {
             ctx.fillStyle = '#2d2d2d';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -545,31 +551,42 @@
                 ctx.lineTo(canvas.width, y);
                 ctx.stroke();
             }
+        }
 
-            // Update and draw
+        // Game loop
+        function gameLoop() {
+            if (!gameRunning) return;
+
+            // Clear and draw background
+            drawBackground();
+
+            // Update player
             updatePlayer();
-            drawPlayer();
+
+            // Auto shoot if mouse is down
+            if (mouse.clicked) {
+                shoot();
+            }
+
+            // Update bullets position
+            bullets.forEach(bullet => bullet.update());
+
+            // Check collisions (separate from update)
+            checkBulletCollisions();
 
             // Spawn zombies
             spawnWaveZombies();
 
-            // Update zombies
+            // Update and draw zombies
             zombies.forEach(zombie => {
                 zombie.update();
                 zombie.draw();
             });
 
-            // Update bullets
-            for (let i = bullets.length - 1; i >= 0; i--) {
-                bullets[i].update();
-                bullets[i].draw();
+            // Draw bullets
+            bullets.forEach(bullet => bullet.draw());
 
-                if (bullets[i].isOffScreen()) {
-                    bullets.splice(i, 1);
-                }
-            }
-
-            // Update particles
+            // Update and draw particles
             for (let i = particles.length - 1; i >= 0; i--) {
                 particles[i].update();
                 particles[i].draw();
@@ -579,10 +596,8 @@
                 }
             }
 
-            // Auto shoot if mouse is down
-            if (mouse.clicked) {
-                shoot();
-            }
+            // Draw player on top
+            drawPlayer();
 
             updateUI();
             requestAnimationFrame(gameLoop);
@@ -591,6 +606,10 @@
         // Event listeners
         window.addEventListener('keydown', (e) => {
             keys[e.key.toLowerCase()] = true;
+            // Prevent arrow keys from scrolling
+            if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(e.key.toLowerCase())) {
+                e.preventDefault();
+            }
         });
 
         window.addEventListener('keyup', (e) => {
@@ -603,12 +622,22 @@
             mouse.y = e.clientY - rect.top;
         });
 
-        canvas.addEventListener('mousedown', () => {
+        canvas.addEventListener('mousedown', (e) => {
+            e.preventDefault();
             mouse.clicked = true;
         });
 
         canvas.addEventListener('mouseup', () => {
             mouse.clicked = false;
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            mouse.clicked = false;
+        });
+
+        // Prevent context menu on right click
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
         });
 
         document.getElementById('restartBtn').addEventListener('click', () => {
