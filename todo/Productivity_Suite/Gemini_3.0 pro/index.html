@@ -1,545 +1,819 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#6366f1">
-    <title>Productivity Suite + Capture</title>
+    <title>Productivity Suite</title>
+    <meta name="theme-color" content="#4a90e2">
     <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="icon-192.png">
     <style>
-        /* Keeping original styles and adding new ones */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        /* --- CSS VARIABLES & THEME --- */
         :root {
-            --primary: #6366f1; --primary-dark: #4f46e5; --secondary: #8b5cf6;
-            --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
-            --dark: #1f2937; --dark-light: #374151; --light: #f3f4f6;
-            --white: #ffffff; --text: #1f2937; --text-light: #6b7280;
-            --border: #e5e7eb; --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --primary: #4a90e2;
+            --success: #2ecc71;
+            --danger: #e74c3c;
+            --warning: #f1c40f;
+            --bg: #f4f7f6;
+            --surface: #ffffff;
+            --text: #333333;
+            --text-light: #777777;
+            --border: #e0e0e0;
+            --shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            --radius: 8px;
+            --nav-width: 240px;
         }
-        [data-theme="dark"] {
-            --dark: #f3f4f6; --dark-light: #e5e7eb; --light: #1f2937;
-            --white: #111827; --text: #f9fafb; --text-light: #d1d5db; --border: #374151;
+
+        body.dark-mode {
+            --bg: #1a1a1a;
+            --surface: #2d2d2d;
+            --text: #ecf0f1;
+            --text-light: #bdc3c7;
+            --border: #404040;
         }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--light); color: var(--text); transition: all 0.3s ease; padding-bottom: 50px;}
-        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
-        
-        /* Header */
-        header { background: var(--white); padding: 20px; border-radius: 15px; box-shadow: var(--shadow); margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
-        .logo { display: flex; align-items: center; gap: 10px; font-size: 24px; font-weight: bold; color: var(--primary); }
-        .header-controls { display: flex; gap: 10px; align-items: center; }
 
-        /* Tabs */
-        .tabs { display: flex; gap: 10px; background: var(--white); padding: 10px; border-radius: 15px; box-shadow: var(--shadow); margin-bottom: 30px; overflow-x: auto; }
-        .tab { padding: 12px 24px; border: none; background: transparent; color: var(--text-light); cursor: pointer; border-radius: 10px; font-size: 16px; font-weight: 500; transition: all 0.3s ease; white-space: nowrap; }
-        .tab:hover { background: var(--light); }
-        .tab.active { background: var(--primary); color: white; }
-        .tab-content { display: none; animation: fadeIn 0.3s ease; }
-        .tab-content.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
 
-        /* Common Elements */
-        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 5px; color: white; }
-        .btn-primary { background: var(--primary); }
-        .btn-secondary { background: var(--secondary); }
-        .btn-success { background: var(--success); }
-        .btn-danger { background: var(--danger); }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .card { background: var(--white); border-radius: 15px; padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
-        .card-header { font-size: 20px; font-weight: 600; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
-        input, textarea, select { width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 8px; margin-bottom: 10px; background: var(--white); color: var(--text); }
-        
-        /* Video Capture Styles */
-        .video-preview-container {
-            width: 100%;
-            height: 400px;
-            background: #000;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            position: relative;
+        body {
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            height: 100vh;
             overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            transition: background 0.3s;
         }
-        video { max-width: 100%; max-height: 100%; }
-        .recording-indicator {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(239, 68, 68, 0.9);
+
+        /* --- LAYOUT --- */
+        aside {
+            width: var(--nav-width);
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 1rem;
+            z-index: 10;
+        }
+
+        main {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        h1,
+        h2,
+        h3 {
+            margin-bottom: 1rem;
+        }
+
+        button {
+            cursor: pointer;
+            border: none;
+            border-radius: var(--radius);
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            transition: 0.2s;
+        }
+
+        button.primary {
+            background: var(--primary);
             color: white;
-            padding: 5px 15px;
-            border-radius: 20px;
+        }
+
+        button.danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--surface);
+            color: var(--text);
+            margin-bottom: 10px;
+        }
+
+        /* --- NAVIGATION --- */
+        .nav-item {
+            padding: 12px;
+            margin-bottom: 5px;
+            border-radius: var(--radius);
+            cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
+            color: var(--text-light);
+        }
+
+        .nav-item:hover {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        .nav-item.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .nav-footer {
+            margin-top: auto;
+            border-top: 1px solid var(--border);
+            padding-top: 1rem;
+        }
+
+        /* --- SECTIONS --- */
+        section {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+
+        section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* --- CARDS & GRIDS --- */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        .card {
+            background: var(--surface);
+            padding: 1.5rem;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            position: relative;
+        }
+
+        .stat-card {
+            text-align: center;
+        }
+
+        .stat-val {
+            font-size: 2rem;
             font-weight: bold;
-            animation: pulse 2s infinite;
+            color: var(--primary);
+        }
+
+        /* --- SPECIFIC MODULE STYLES --- */
+        /* Notes */
+        .note-card {
+            border-left: 5px solid var(--primary);
+            height: 200px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: transparent;
+            color: var(--text-light);
+            padding: 5px;
+        }
+
+        /* Todos */
+        .todo-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .todo-item.completed span {
+            text-decoration: line-through;
+            opacity: 0.6;
+        }
+
+        .badge {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            color: white;
+        }
+
+        .badge.high {
+            background: var(--danger);
+        }
+
+        .badge.medium {
+            background: var(--warning);
+            color: #333;
+        }
+
+        .badge.low {
+            background: var(--success);
+        }
+
+        /* Timer */
+        .timer-display {
+            font-size: 4rem;
+            font-weight: bold;
+            text-align: center;
+            margin: 2rem 0;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .timer-controls {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        /* Budget */
+        .transaction {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .amount.inc {
+            color: var(--success);
+        }
+
+        .amount.exp {
+            color: var(--danger);
+        }
+
+        /* Recorder */
+        .recording-indicator {
+            width: 15px;
+            height: 15px;
+            background: var(--danger);
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+            display: inline-block;
+            margin-right: 10px;
             display: none;
         }
-        .capture-controls { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
-        .recording-timer { font-family: monospace; font-size: 24px; margin-bottom: 20px; text-align: center; }
 
-        /* Grid & Layouts from original */
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
-        .stat-card { background: var(--white); padding: 20px; border-radius: 12px; box-shadow: var(--shadow); text-align: center; }
-        .stat-value { font-size: 32px; font-weight: 700; margin: 10px 0; }
-        .notes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
-        .note { background: var(--white); padding: 20px; border-radius: 12px; border-left: 4px solid var(--primary); box-shadow: var(--shadow); }
-        .todo-item { background: var(--white); padding: 15px; margin-bottom: 10px; border-radius: 10px; display: flex; align-items: center; gap: 15px; box-shadow: var(--shadow); }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
-        .modal.active { display: flex; }
-        .modal-content { background: var(--white); padding: 30px; border-radius: 15px; width: 90%; max-width: 500px; }
-        .toast { position: fixed; bottom: 20px; right: 20px; background: var(--dark); color: white; padding: 15px 20px; border-radius: 8px; display: none; z-index: 2000; }
-        .toast.show { display: block; animation: slideIn 0.3s ease; }
-        
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.4;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
 
         /* Responsive */
-        @media (max-width: 768px) { header { flex-direction: column; } .video-preview-container { height: 250px; } }
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+            }
+
+            aside {
+                width: 100%;
+                flex-direction: row;
+                overflow-x: auto;
+                padding: 10px;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .nav-item span {
+                display: none;
+            }
+
+            .nav-item {
+                justify-content: center;
+            }
+
+            .nav-footer {
+                display: none;
+            }
+        }
+
+        /* Toast */
+        #toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--text);
+            color: var(--bg);
+            padding: 10px 20px;
+            border-radius: var(--radius);
+            opacity: 0;
+            transition: 0.3s;
+            pointer-events: none;
+            z-index: 100;
+        }
     </style>
 </head>
+
 <body>
-    <div class="container">
-        <!-- Header -->
-        <header>
-            <div class="logo">
-                <span>🚀</span>
-                <span>Productivity Suite</span>
-            </div>
-            <div class="header-controls">
-                <button class="btn btn-secondary" onclick="toggleTheme()">🌓 Theme</button>
-                <button class="btn btn-secondary" onclick="exportData()">📥 Export</button>
-                <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">📤 Import</button>
-                <input type="file" id="importFile" style="display: none" accept=".json" onchange="importData(event)">
-            </div>
-        </header>
 
-        <!-- Tabs Navigation -->
-        <div class="tabs">
-            <button class="tab active" onclick="switchTab('dashboard')">📊 Dashboard</button>
-            <button class="tab" onclick="switchTab('notes')">📝 Notes</button>
-            <button class="tab" onclick="switchTab('todos')">✅ Todos</button>
-            <button class="tab" onclick="switchTab('timer')">⏰ Timer</button>
-            <button class="tab" onclick="switchTab('budget')">💰 Budget</button>
-            <button class="tab" onclick="switchTab('capture')">🎥 Capture</button>
+    <!-- SIDEBAR -->
+    <aside>
+        <h2 style="padding-left:10px;">🚀 Suite</h2>
+        <div class="nav-item active" onclick="showSection('dashboard')">📊 <span>Dashboard</span></div>
+        <div class="nav-item" onclick="showSection('notes')">📝 <span>Notes</span></div>
+        <div class="nav-item" onclick="showSection('todos')">✅ <span>Todos</span></div>
+        <div class="nav-item" onclick="showSection('timer')">⏰ <span>Timer</span></div>
+        <div class="nav-item" onclick="showSection('budget')">💰 <span>Budget</span></div>
+        <div class="nav-item" onclick="showSection('recorder')">🎥 <span>Recorder</span></div>
+
+        <div class="nav-footer">
+            <div class="nav-item" onclick="toggleTheme()">🌗 <span>Toggle Theme</span></div>
+            <div class="nav-item" onclick="exportData()">💾 <span>Backup Data</span></div>
         </div>
+    </aside>
 
-        <!-- Dashboard Tab -->
-        <div id="dashboard" class="tab-content active">
-            <div class="card">
-                <h2 class="card-header">📊 Overview</h2>
-                <div class="stats-grid">
-                    <div class="stat-card"><div class="stat-label">Notes</div><div class="stat-value" id="dashNoteCount">0</div></div>
-                    <div class="stat-card"><div class="stat-label">Active Todos</div><div class="stat-value" id="dashTodoCount">0</div></div>
-                    <div class="stat-card"><div class="stat-label">Reminders</div><div class="stat-value" id="dashReminderCount">0</div></div>
-                    <div class="stat-card"><div class="stat-label">Balance</div><div class="stat-value" id="dashBalance">$0</div></div>
+    <!-- MAIN CONTENT -->
+    <main>
+        <!-- DASHBOARD -->
+        <section id="dashboard" class="active">
+            <h1>Dashboard</h1>
+            <div class="grid">
+                <div class="card stat-card">
+                    <h3>Active Todos</h3>
+                    <div class="stat-val" id="stat-todos">0</div>
+                </div>
+                <div class="card stat-card">
+                    <h3>Balance</h3>
+                    <div class="stat-val" id="stat-balance">$0</div>
+                </div>
+                <div class="card stat-card">
+                    <h3>Notes</h3>
+                    <div class="stat-val" id="stat-notes">0</div>
+                </div>
+                <div class="card stat-card">
+                    <h3>Recs</h3>
+                    <div class="stat-val" id="stat-recs">0</div>
                 </div>
             </div>
-        </div>
+            <div class="grid" style="margin-top: 20px;">
+                <div class="card">
+                    <h3>📅 Today's Priorities</h3>
+                    <div id="dash-priorities"></div>
+                </div>
+                <div class="card">
+                    <h3>⏰ Upcoming Reminders</h3>
+                    <div id="dash-reminders"></div>
+                </div>
+            </div>
+        </section>
 
-        <!-- Capture Tab (New Feature) -->
-        <div id="capture" class="tab-content">
+        <!-- NOTES -->
+        <section id="notes">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h1>Notes</h1>
+                <button class="primary" onclick="addNote()">+ New Note</button>
+            </div>
+            <input type="text" id="note-search" placeholder="Search notes..." onkeyup="renderNotes()">
+            <div class="grid" id="notes-grid"></div>
+        </section>
+
+        <!-- TODOS -->
+        <section id="todos">
+            <h1>Todos</h1>
             <div class="card">
-                <h2 class="card-header">🎥 Screen Recording & Screenshots</h2>
-                
-                <div class="video-preview-container">
-                    <video id="videoPreview" autoplay muted playsinline></video>
-                    <div id="recordingIndicator" class="recording-indicator">
-                        <span>●</span> REC
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="todo-input" placeholder="Add a new task...">
+                    <select id="todo-priority" style="width: 100px;">
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                    <button class="primary" onclick="addTodo()">Add</button>
+                </div>
+                <div id="todo-list" style="margin-top: 1rem;"></div>
+            </div>
+        </section>
+
+        <!-- TIMER -->
+        <section id="timer">
+            <h1>Focus Timer & Reminders</h1>
+            <div class="grid">
+                <div class="card" style="text-align: center;">
+                    <h3>Pomodoro</h3>
+                    <div class="timer-display" id="time-display">25:00</div>
+                    <div class="timer-controls">
+                        <button class="primary" onclick="startTimer()">Start</button>
+                        <button class="warning" onclick="pauseTimer()">Pause</button>
+                        <button class="danger" onclick="resetTimer()">Reset</button>
                     </div>
-                    <div id="noSourceMsg" style="color: #666;">Select a source to begin</div>
                 </div>
-
-                <div class="recording-timer" id="recTimer">00:00</div>
-
-                <div class="capture-controls">
-                    <button id="btnStartRec" class="btn btn-primary" onclick="startRecording()">
-                        ⏺️ Start Recording
-                    </button>
-                    <button id="btnStopRec" class="btn btn-danger" onclick="stopRecording()" disabled>
-                        ⏹️ Stop Recording
-                    </button>
-                    <button id="btnScreenshot" class="btn btn-secondary" onclick="takeScreenshot()">
-                        📸 Take Screenshot
-                    </button>
-                </div>
-
-                <div style="margin-top: 20px; font-size: 0.9em; color: var(--text-light); text-align: center;">
-                    <p>Note: Recordings are saved as .webm files. Screenshots are saved as .png.</p>
+                <div class="card">
+                    <h3>Reminders</h3>
+                    <div style="display: flex; gap: 5px;">
+                        <input type="text" id="rem-msg" placeholder="Message">
+                        <input type="time" id="rem-time">
+                        <button class="primary" onclick="addReminder()">Set</button>
+                    </div>
+                    <div id="reminder-list"></div>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <!-- Notes Tab -->
-        <div id="notes" class="tab-content">
+        <!-- BUDGET -->
+        <section id="budget">
+            <h1>Budget Tracker</h1>
+            <div class="grid">
+                <div class="card">
+                    <h3>Add Transaction</h3>
+                    <input type="text" id="bud-desc" placeholder="Description">
+                    <input type="number" id="bud-amount" placeholder="Amount">
+                    <select id="bud-type">
+                        <option value="inc">Income</option>
+                        <option value="exp">Expense</option>
+                    </select>
+                    <button class="primary" onclick="addTransaction()">Add Transaction</button>
+                </div>
+                <div class="card">
+                    <h3>History (Total: <span id="total-balance">$0</span>)</h3>
+                    <div id="budget-list" style="max-height: 300px; overflow-y: auto;"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- RECORDER -->
+        <section id="recorder">
+            <h1>Screen Recorder</h1>
             <div class="card">
-                <h2 class="card-header">📝 Notes <button class="btn btn-primary" onclick="showModal('noteModal')">+ New</button></h2>
-                <input type="search" id="noteSearch" placeholder="Search notes..." oninput="renderNotes()">
-                <div class="notes-grid" id="notesContainer"></div>
-            </div>
-        </div>
-
-        <!-- Todos Tab -->
-        <div id="todos" class="tab-content">
-            <div class="card">
-                <h2 class="card-header">✅ Todos <button class="btn btn-primary" onclick="showModal('todoModal')">+ New</button></h2>
-                <div id="todosContainer"></div>
-            </div>
-        </div>
-
-        <!-- Timer Tab -->
-        <div id="timer" class="tab-content">
-            <div class="card">
-                <h2 class="card-header">⏰ Pomodoro</h2>
-                <div style="text-align: center; padding: 20px;">
-                    <div style="font-size: 64px; font-family: monospace; margin-bottom: 20px;" id="timerDisplay">25:00</div>
-                    <button class="btn btn-primary" onclick="startTimer()">Start</button>
-                    <button class="btn btn-secondary" onclick="pauseTimer()">Pause</button>
-                    <button class="btn btn-danger" onclick="resetTimer()">Reset</button>
+                <div style="margin-bottom: 20px;">
+                    <span class="recording-indicator" id="rec-dot"></span>
+                    <span id="rec-status">Ready to record</span>
+                </div>
+                <div class="timer-controls">
+                    <button class="primary" onclick="startRecording()">Start Recording</button>
+                    <button class="danger" onclick="stopRecording()">Stop</button>
                 </div>
             </div>
-        </div>
+            <h3 style="margin-top: 20px;">Gallery</h3>
+            <div class="grid" id="video-gallery"></div>
+        </section>
+    </main>
 
-        <!-- Budget Tab -->
-        <div id="budget" class="tab-content">
-            <div class="card">
-                <h2 class="card-header">💰 Budget</h2>
-                <div class="stats-grid" style="margin-bottom: 20px;">
-                    <div class="stat-card">Income <div class="stat-value" style="color: var(--success)" id="totalIncome">$0</div></div>
-                    <div class="stat-card">Expense <div class="stat-value" style="color: var(--danger)" id="totalExpense">$0</div></div>
-                </div>
-                <button class="btn btn-success" onclick="showTransModal('income')">+ Income</button>
-                <button class="btn btn-danger" onclick="showTransModal('expense')">- Expense</button>
-                <div id="transactionsContainer" style="margin-top: 20px;"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modals -->
-    <div id="noteModal" class="modal">
-        <div class="modal-content">
-            <h3>New Note</h3>
-            <input id="noteTitle" placeholder="Title">
-            <textarea id="noteContent" placeholder="Content" rows="5"></textarea>
-            <button class="btn btn-primary" onclick="saveNote()">Save</button>
-            <button class="btn btn-secondary" onclick="closeModal('noteModal')">Cancel</button>
-        </div>
-    </div>
-
-    <div id="todoModal" class="modal">
-        <div class="modal-content">
-            <h3>New Todo</h3>
-            <input id="todoText" placeholder="Task">
-            <button class="btn btn-primary" onclick="saveTodo()">Save</button>
-            <button class="btn btn-secondary" onclick="closeModal('todoModal')">Cancel</button>
-        </div>
-    </div>
-
-    <div id="transModal" class="modal">
-        <div class="modal-content">
-            <h3 id="transTitle">Transaction</h3>
-            <input id="transDesc" placeholder="Description">
-            <input type="number" id="transAmount" placeholder="Amount">
-            <button class="btn btn-primary" onclick="saveTransaction()">Save</button>
-            <button class="btn btn-secondary" onclick="closeModal('transModal')">Cancel</button>
-        </div>
-    </div>
-
-    <div id="toast" class="toast"></div>
-    <canvas id="captureCanvas" style="display: none;"></canvas>
+    <div id="toast">Notification</div>
 
     <script>
-        // --- PWA Registration ---
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('SW Registered'))
-                    .catch(err => console.log('SW Error', err));
-            });
-        }
-
-        // --- State ---
-        let data = {
-            notes: JSON.parse(localStorage.getItem('notes')) || [],
-            todos: JSON.parse(localStorage.getItem('todos')) || [],
-            transactions: JSON.parse(localStorage.getItem('transactions')) || []
+        // --- STATE MANAGEMENT ---
+        let data = JSON.parse(localStorage.getItem('prodApp')) || {
+            notes: [],
+            todos: [],
+            reminders: [],
+            budget: [],
+            theme: 'light'
         };
-        let mediaRecorder;
-        let recordedChunks = [];
-        let stream = null;
-        let timerInterval;
-        let recTimerInterval;
-        let recSeconds = 0;
 
-        // --- Initialization ---
-        function init() {
-            renderNotes();
-            renderTodos();
-            renderTransactions();
+        // --- INDEXED DB FOR VIDEO ---
+        let db;
+        const request = indexedDB.open("MediaDB", 1);
+        request.onupgradeneeded = e => {
+            db = e.target.result;
+            db.createObjectStore("videos", { keyPath: "id" });
+        };
+        request.onsuccess = e => { db = e.target.result; loadVideos(); };
+
+        // --- GENERAL FUNCTIONS ---
+        function saveData() {
+            localStorage.setItem('prodApp', JSON.stringify(data));
             updateDashboard();
-            
-            // Theme
-            const theme = localStorage.getItem('theme') || 'light';
-            document.documentElement.setAttribute('data-theme', theme);
-        }
-
-        // --- Capture Logic ---
-        async function getStream() {
-            try {
-                // Ask for screen selection
-                stream = await navigator.mediaDevices.getDisplayMedia({
-                    video: { cursor: "always" },
-                    audio: true
-                });
-                
-                const video = document.getElementById('videoPreview');
-                video.srcObject = stream;
-                document.getElementById('noSourceMsg').style.display = 'none';
-
-                // Listen for "Stop Sharing" via browser UI
-                stream.getVideoTracks()[0].onended = () => {
-                    stopRecordingLogic();
-                    video.srcObject = null;
-                    document.getElementById('noSourceMsg').style.display = 'block';
-                    stream = null;
-                };
-                return stream;
-            } catch (err) {
-                console.error("Error: " + err);
-                return null;
-            }
-        }
-
-        async function startRecording() {
-            if (!stream) {
-                stream = await getStream();
-            }
-            if (!stream) return;
-
-            recordedChunks = [];
-            mediaRecorder = new MediaRecorder(stream);
-
-            mediaRecorder.ondataavailable = (e) => {
-                if (e.data.size > 0) recordedChunks.push(e.data);
-            };
-
-            mediaRecorder.onstop = () => {
-                const blob = new Blob(recordedChunks, { type: 'video/webm' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `recording-${Date.now()}.webm`;
-                a.click();
-                window.URL.revokeObjectURL(url);
-                showToast('Recording saved! 📥');
-            };
-
-            mediaRecorder.start();
-            document.getElementById('btnStartRec').disabled = true;
-            document.getElementById('btnStopRec').disabled = false;
-            document.getElementById('btnScreenshot').disabled = true; // Disable screenshot during video rec
-            document.getElementById('recordingIndicator').style.display = 'flex';
-            
-            // Timer
-            recSeconds = 0;
-            recTimerInterval = setInterval(() => {
-                recSeconds++;
-                const mins = Math.floor(recSeconds / 60).toString().padStart(2, '0');
-                const secs = (recSeconds % 60).toString().padStart(2, '0');
-                document.getElementById('recTimer').textContent = `${mins}:${secs}`;
-            }, 1000);
-        }
-
-        function stopRecording() {
-            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                mediaRecorder.stop();
-                stopRecordingLogic();
-            }
-        }
-
-        function stopRecordingLogic() {
-            clearInterval(recTimerInterval);
-            document.getElementById('recTimer').textContent = "00:00";
-            document.getElementById('btnStartRec').disabled = false;
-            document.getElementById('btnStopRec').disabled = true;
-            document.getElementById('btnScreenshot').disabled = false;
-            document.getElementById('recordingIndicator').style.display = 'none';
-            
-            // Stop stream tracks to release memory if not just pausing
-            if(stream) {
-                stream.getTracks().forEach(track => track.stop());
-                stream = null;
-                document.getElementById('videoPreview').srcObject = null;
-                document.getElementById('noSourceMsg').style.display = 'block';
-            }
-        }
-
-        async function takeScreenshot() {
-            // Temporarily start stream just for a frame
-            if (!stream) {
-                stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
-            }
-            
-            const track = stream.getVideoTracks()[0];
-            const imageCapture = new ImageCapture(track);
-            
-            try {
-                const bitmap = await imageCapture.grabFrame();
-                const canvas = document.getElementById('captureCanvas');
-                canvas.width = bitmap.width;
-                canvas.height = bitmap.height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(bitmap, 0, 0);
-                
-                const link = document.createElement('a');
-                link.download = `screenshot-${Date.now()}.png`;
-                link.href = canvas.toDataURL();
-                link.click();
-                showToast('Screenshot captured! 📸');
-                
-                // Clean up immediately
-                stream.getTracks().forEach(track => track.stop());
-                stream = null;
-            } catch (err) {
-                console.error(err);
-                showToast('Error taking screenshot');
-            }
-        }
-
-        // --- Core Logic (Simplified from original for brevity) ---
-        function switchTab(id) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            event.target.classList.add('active');
-            document.getElementById(id).classList.add('active');
-        }
-
-        function showModal(id) { document.getElementById(id).classList.add('active'); }
-        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
-        
-        let transType = 'income';
-        function showTransModal(type) {
-            transType = type;
-            document.getElementById('transTitle').textContent = type === 'income' ? 'Add Income' : 'Add Expense';
-            showModal('transModal');
-        }
-
-        function saveNote() {
-            const n = { id: Date.now(), title: document.getElementById('noteTitle').value, content: document.getElementById('noteContent').value };
-            data.notes.push(n); saveData('notes'); renderNotes(); closeModal('noteModal');
-        }
-
-        function saveTodo() {
-            data.todos.push({ id: Date.now(), text: document.getElementById('todoText').value, completed: false });
-            saveData('todos'); renderTodos(); closeModal('todoModal');
-        }
-
-        function saveTransaction() {
-            const amt = parseFloat(document.getElementById('transAmount').value);
-            data.transactions.push({ id: Date.now(), desc: document.getElementById('transDesc').value, amount: amt, type: transType });
-            saveData('transactions'); renderTransactions(); closeModal('transModal');
-        }
-
-        function renderNotes() {
-            const term = document.getElementById('noteSearch').value.toLowerCase();
-            const html = data.notes.filter(n => n.title.toLowerCase().includes(term)).map(n => `
-                <div class="note"><h3>${n.title}</h3><p>${n.content}</p>
-                <button class="btn btn-danger btn-small" style="margin-top:10px" onclick="deleteItem('notes', ${n.id})">Delete</button></div>
-            `).join('');
-            document.getElementById('notesContainer').innerHTML = html || '<p>No notes.</p>';
-        }
-
-        function renderTodos() {
-            const html = data.todos.map(t => `
-                <div class="todo-item" style="opacity: ${t.completed?0.5:1}">
-                    <input type="checkbox" ${t.completed?'checked':''} onchange="toggleTodo(${t.id})">
-                    <span style="flex:1; text-decoration: ${t.completed?'line-through':'none'}">${t.text}</span>
-                    <button class="btn btn-danger" onclick="deleteItem('todos', ${t.id})">X</button>
-                </div>
-            `).join('');
-            document.getElementById('todosContainer').innerHTML = html || '<p>No todos.</p>';
-        }
-
-        function renderTransactions() {
-            let inc = 0, exp = 0;
-            const html = data.transactions.map(t => {
-                if(t.type === 'income') inc += t.amount; else exp += t.amount;
-                return `<div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #eee">
-                    <span>${t.desc}</span><span style="color:${t.type==='income'?'var(--success)':'var(--danger)'}">${t.type==='income'?'+':'-'}$${t.amount}</span>
-                </div>`;
-            }).join('');
-            document.getElementById('transactionsContainer').innerHTML = html;
-            document.getElementById('totalIncome').textContent = '$'+inc;
-            document.getElementById('totalExpense').textContent = '$'+exp;
-            document.getElementById('totalBalance').textContent = '$'+(inc-exp);
-            updateDashboard();
-        }
-
-        function updateDashboard() {
-            document.getElementById('dashNoteCount').textContent = data.notes.length;
-            document.getElementById('dashTodoCount').textContent = data.todos.filter(t=>!t.completed).length;
-            let bal = data.transactions.reduce((acc, t) => t.type==='income' ? acc+t.amount : acc-t.amount, 0);
-            document.getElementById('dashBalance').textContent = '$'+bal;
-        }
-
-        function toggleTodo(id) {
-            const t = data.todos.find(x => x.id === id); t.completed = !t.completed;
-            saveData('todos'); renderTodos();
-        }
-
-        function deleteItem(type, id) {
-            data[type] = data[type].filter(x => x.id !== id);
-            saveData(type); 
-            if(type==='notes') renderNotes();
-            if(type==='todos') renderTodos();
-        }
-
-        function saveData(key) { localStorage.setItem(key, JSON.stringify(data[key])); updateDashboard(); }
-        
-        function toggleTheme() {
-            const curr = document.documentElement.getAttribute('data-theme');
-            const next = curr === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', next);
-            localStorage.setItem('theme', next);
         }
 
         function showToast(msg) {
             const t = document.getElementById('toast');
-            t.textContent = msg; t.classList.add('show');
-            setTimeout(() => t.classList.remove('show'), 3000);
+            t.innerText = msg;
+            t.style.opacity = 1;
+            setTimeout(() => t.style.opacity = 0, 3000);
         }
 
-        // Timer Logic
-        let timeLeft = 1500; let isTimerRunning = false;
-        function startTimer() { if(isTimerRunning) return; isTimerRunning=true; timerInterval = setInterval(() => {
-            timeLeft--; updateTimerDisplay(); if(timeLeft<=0) { pauseTimer(); showToast('Time Up!'); }
-        }, 1000); }
-        function pauseTimer() { clearInterval(timerInterval); isTimerRunning=false; }
-        function resetTimer() { pauseTimer(); timeLeft=1500; updateTimerDisplay(); }
+        function showSection(id) {
+            document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            // Highlight nav
+            const navs = document.querySelectorAll('.nav-item');
+            if (id === 'dashboard') navs[0].classList.add('active');
+            if (id === 'notes') navs[1].classList.add('active');
+            if (id === 'todos') navs[2].classList.add('active');
+            if (id === 'timer') navs[3].classList.add('active');
+            if (id === 'budget') navs[4].classList.add('active');
+            if (id === 'recorder') navs[5].classList.add('active');
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            data.theme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+            saveData();
+        }
+
+        // Initialize
+        if (data.theme === 'dark') document.body.classList.add('dark-mode');
+
+        // --- DASHBOARD ---
+        function updateDashboard() {
+            document.getElementById('stat-todos').innerText = data.todos.filter(t => !t.completed).length;
+
+            const bal = data.budget.reduce((acc, curr) => acc + (curr.type === 'inc' ? parseFloat(curr.amount) : -parseFloat(curr.amount)), 0);
+            document.getElementById('stat-balance').innerText = `$${bal.toFixed(2)}`;
+            document.getElementById('stat-notes').innerText = data.notes.length;
+
+            // Priorities
+            const priorities = data.todos.filter(t => !t.completed && t.priority === 'high').slice(0, 3);
+            document.getElementById('dash-priorities').innerHTML = priorities.map(t =>
+                `<div class="todo-item"><span>${t.text}</span><span class="badge high">High</span></div>`
+            ).join('') || '<p style="color:var(--text-light)">No urgent tasks.</p>';
+
+            // Reminders
+            document.getElementById('dash-reminders').innerHTML = data.reminders.sort((a, b) => a.time.localeCompare(b.time)).slice(0, 3).map(r =>
+                `<div class="todo-item"><span>${r.msg}</span><span>${r.time}</span></div>`
+            ).join('') || '<p style="color:var(--text-light)">No upcoming reminders.</p>';
+        }
+
+        // --- NOTES ---
+        function addNote() {
+            const title = prompt("Note Title:");
+            const content = prompt("Note Content:");
+            if (title) {
+                data.notes.push({ id: Date.now(), title, content, color: `hsl(${Math.random() * 360}, 70%, 85%)` });
+                saveData();
+                renderNotes();
+            }
+        }
+
+        function renderNotes() {
+            const query = document.getElementById('note-search').value.toLowerCase();
+            const grid = document.getElementById('notes-grid');
+            grid.innerHTML = data.notes
+                .filter(n => n.title.toLowerCase().includes(query) || n.content.toLowerCase().includes(query))
+                .map(n => `
+                <div class="card note-card" style="border-left-color:${n.color}">
+                    <h3>${n.title}</h3>
+                    <p>${n.content}</p>
+                    <button class="delete-btn" onclick="deleteNote(${n.id})">✖</button>
+                </div>`).join('');
+        }
+
+        function deleteNote(id) {
+            if (confirm("Delete note?")) {
+                data.notes = data.notes.filter(n => n.id !== id);
+                saveData();
+                renderNotes();
+            }
+        }
+
+        // --- TODOS ---
+        function addTodo() {
+            const txt = document.getElementById('todo-input').value;
+            const prio = document.getElementById('todo-priority').value;
+            if (txt) {
+                data.todos.push({ id: Date.now(), text: txt, priority: prio, completed: false });
+                document.getElementById('todo-input').value = '';
+                saveData();
+                renderTodos();
+            }
+        }
+
+        function renderTodos() {
+            const list = document.getElementById('todo-list');
+            list.innerHTML = data.todos.sort((a, b) => a.completed - b.completed).map(t => `
+                <div class="todo-item ${t.completed ? 'completed' : ''}">
+                    <input type="checkbox" ${t.completed ? 'checked' : ''} onclick="toggleTodo(${t.id})">
+                    <span style="flex:1">${t.text}</span>
+                    <span class="badge ${t.priority}">${t.priority}</span>
+                    <button class="danger" style="padding:2px 6px; font-size:0.7rem" onclick="deleteTodo(${t.id})">✖</button>
+                </div>
+            `).join('');
+        }
+
+        function toggleTodo(id) {
+            const t = data.todos.find(x => x.id === id);
+            t.completed = !t.completed;
+            saveData();
+            renderTodos();
+        }
+
+        function deleteTodo(id) {
+            data.todos = data.todos.filter(t => t.id !== id);
+            saveData();
+            renderTodos();
+        }
+
+        // --- TIMER & REMINDERS ---
+        let timerInterval;
+        let timeLeft = 25 * 60;
+
+        function startTimer() {
+            if (timerInterval) return;
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    new Notification("Time's up!");
+                    alert("Pomodoro Finished!");
+                    resetTimer();
+                }
+            }, 1000);
+        }
+
+        function pauseTimer() { clearInterval(timerInterval); timerInterval = null; }
+        function resetTimer() { pauseTimer(); timeLeft = 25 * 60; updateTimerDisplay(); }
         function updateTimerDisplay() {
-            document.getElementById('timerDisplay').textContent = `${Math.floor(timeLeft/60).toString().padStart(2,'0')}:${(timeLeft%60).toString().padStart(2,'0')}`;
+            const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+            const s = (timeLeft % 60).toString().padStart(2, '0');
+            document.getElementById('time-display').innerText = `${m}:${s}`;
+        }
+
+        function addReminder() {
+            const msg = document.getElementById('rem-msg').value;
+            const time = document.getElementById('rem-time').value;
+            if (msg && time) {
+                data.reminders.push({ id: Date.now(), msg, time });
+                saveData();
+                renderReminders();
+            }
+        }
+
+        function renderReminders() {
+            document.getElementById('reminder-list').innerHTML = data.reminders.map(r => `
+                <div class="todo-item">
+                    <span>${r.msg}</span>
+                    <b>${r.time}</b>
+                    <button onclick="deleteReminder(${r.id})">✖</button>
+                </div>
+            `).join('');
+        }
+
+        function deleteReminder(id) {
+            data.reminders = data.reminders.filter(r => r.id !== id);
+            saveData();
+            renderReminders();
+        }
+
+        // Reminder Checker
+        setInterval(() => {
+            const now = new Date();
+            const current = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            data.reminders.forEach(r => {
+                if (r.time === current && now.getSeconds() === 0) {
+                    new Notification("Reminder: " + r.msg);
+                    showToast("Reminder: " + r.msg);
+                }
+            });
+        }, 1000);
+
+        // --- BUDGET ---
+        function addTransaction() {
+            const desc = document.getElementById('bud-desc').value;
+            const amount = document.getElementById('bud-amount').value;
+            const type = document.getElementById('bud-type').value;
+            if (desc && amount) {
+                data.budget.push({ id: Date.now(), desc, amount, type });
+                saveData();
+                renderBudget();
+                document.getElementById('bud-desc').value = '';
+                document.getElementById('bud-amount').value = '';
+            }
+        }
+
+        function renderBudget() {
+            let total = 0;
+            document.getElementById('budget-list').innerHTML = data.budget.map(b => {
+                total += b.type === 'inc' ? parseFloat(b.amount) : -parseFloat(b.amount);
+                return `<div class="transaction">
+                    <span>${b.desc}</span>
+                    <span class="amount ${b.type}">${b.type === 'inc' ? '+' : '-'}$${b.amount}</span>
+                    <button style="margin-left:10px; padding:2px 5px;" class="danger" onclick="deleteTransaction(${b.id})">x</button>
+                </div>`;
+            }).join('');
+            document.getElementById('total-balance').innerText = `$${total.toFixed(2)}`;
+        }
+
+        function deleteTransaction(id) {
+            data.budget = data.budget.filter(b => b.id !== id);
+            saveData();
+            renderBudget();
+        }
+
+        // --- RECORDER ---
+        let mediaRecorder;
+        let recordedChunks = [];
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+
+                mediaRecorder.ondataavailable = e => {
+                    if (e.data.size > 0) recordedChunks.push(e.data);
+                };
+
+                mediaRecorder.onstop = saveRecording;
+
+                mediaRecorder.start();
+                document.getElementById('rec-dot').style.display = 'inline-block';
+                document.getElementById('rec-status').innerText = "Recording...";
+            } catch (err) {
+                console.error("Error: " + err);
+            }
+        }
+
+        function stopRecording() {
+            mediaRecorder.stop();
+            mediaRecorder.stream.getTracks().forEach(track => track.stop());
+            document.getElementById('rec-dot').style.display = 'none';
+            document.getElementById('rec-status').innerText = "Ready";
+        }
+
+        function saveRecording() {
+            const blob = new Blob(recordedChunks, { type: "video/webm" });
+            recordedChunks = [];
+            const id = Date.now();
+
+            const tx = db.transaction("videos", "readwrite");
+            tx.objectStore("videos").add({ id, blob, date: new Date().toLocaleString() });
+
+            tx.oncomplete = () => {
+                showToast("Recording Saved!");
+                loadVideos();
+            };
+        }
+
+        function loadVideos() {
+            const tx = db.transaction("videos", "readonly");
+            const req = tx.objectStore("videos").getAll();
+            req.onsuccess = () => {
+                document.getElementById('video-gallery').innerHTML = req.result.map(v => {
+                    const url = URL.createObjectURL(v.blob);
+                    return `<div class="card">
+                        <video src="${url}" controls style="width:100%"></video>
+                        <p>${v.date}</p>
+                        <button class="danger" onclick="deleteVideo(${v.id})">Delete</button>
+                    </div>`;
+                }).join('');
+                document.getElementById('stat-recs').innerText = req.result.length;
+            };
+        }
+
+        function deleteVideo(id) {
+            if (confirm("Delete video?")) {
+                const tx = db.transaction("videos", "readwrite");
+                tx.objectStore("videos").delete(id);
+                tx.oncomplete = loadVideos;
+            }
         }
 
         function exportData() {
-            const blob = new Blob([JSON.stringify(data)], {type: 'application/json'});
+            const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
-            const a = document.createElement('a'); a.href = url; a.download = 'backup.json'; a.click();
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'productivity-backup.json';
+            a.click();
         }
 
-        function importData(e) {
-            const reader = new FileReader();
-            reader.onload = (evt) => {
-                data = JSON.parse(evt.target.result);
-                saveData('notes'); saveData('todos'); saveData('transactions');
-                init();
-            };
-            reader.readAsText(e.target.files[0]);
-        }
+        // --- INIT ---
+        window.onload = () => {
+            renderNotes();
+            renderTodos();
+            renderBudget();
+            renderReminders();
+            updateDashboard();
+            if (Notification.permission !== "granted") Notification.requestPermission();
+        };
 
-        init();
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
     </script>
 </body>
+
 </html>
