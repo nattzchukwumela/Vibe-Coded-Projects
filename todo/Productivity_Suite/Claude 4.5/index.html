@@ -1104,6 +1104,7 @@
         <div class="modal-content">
             <h2 class="modal-header">Create Todo</h2>
             <input type="text" id="todoText" placeholder="What needs to be done?">
+            <textarea id="todoDescription" placeholder="Add a detailed description (optional)..." style="min-height: 80px;"></textarea>
             <select id="todoPriority">
                 <option value="low">Low Priority</option>
                 <option value="medium">Medium Priority</option>
@@ -1924,10 +1925,12 @@
         function showTodoModal() {
             document.getElementById('todoModal').classList.add('active');
             document.getElementById('todoText').value = '';
+            document.getElementById('todoDescription').value = '';
         }
 
         function saveTodo() {
             const text = document.getElementById('todoText').value.trim();
+            const description = document.getElementById('todoDescription').value.trim();
             const priority = document.getElementById('todoPriority').value;
             const dueDate = document.getElementById('todoDueDate').value;
             const category = document.getElementById('todoCategory').value;
@@ -1940,6 +1943,7 @@
             const todo = {
                 id: Date.now(),
                 text,
+                description,
                 priority,
                 dueDate,
                 category,
@@ -1985,6 +1989,7 @@
                            onchange="toggleTodo(${todo.id})">
                     <div class="todo-content">
                         <div class="todo-text">${todo.text}</div>
+                        ${todo.description ? `<div style="font-size: 14px; color: var(--text-light); margin-top: 5px; line-height: 1.4;">${todo.description}</div>` : ''}
                         <div class="todo-meta">
                             <span class="priority-badge priority-${todo.priority}">${todo.priority}</span>
                             <span>📁 ${todo.category}</span>
